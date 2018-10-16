@@ -160,7 +160,7 @@ json_t *get_order_info(order_t *order)
 
 static int order_put(market_t *m, order_t *order)
 {
-    if (order->type != MARKET_ORDER_TYPE_LIMIT)
+    if (order->type != MARKET_ORDER_TYPE_LIMIT && order->type != MARKET_ORDER_TYPE_STOP_LOSS)
         return -__LINE__;
 
     struct dict_order_key order_key = { .order_id = order->id };
