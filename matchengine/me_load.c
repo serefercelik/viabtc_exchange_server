@@ -166,6 +166,88 @@ static int load_update_balance(json_t *params)
     return 0;
 }
 
+static int load_stop_loss_order(json_t *params)
+{
+    if (json_array_size(params) != 7)
+        return -__LINE__;
+    
+    // user_id
+    if (!json_is_integer(json_array_get(params, 0)))
+        return -__LINE__;
+    uint32_t user_id = json_integer_value(json_array_get(params, 0));
+    
+    // market
+    if (!json_is_string(json_array_get(params, 1)))
+        return -__LINE__;
+    const char *market_name = json_string_value(json_array_get(params, 1));
+    market_t *market = get_market(market_name);
+    if (market == NULL)
+        return 0;
+    
+    // side
+    if (!json_is_integer(json_array_get(params, 2)))
+        return -__LINE__;
+    uint32_t side = json_integer_value(json_array_get(params, 2));
+    if (side != MARKET_ORDER_SIDE_ASK && side != MARKET_ORDER_SIDE_BID)
+        return -__LINE__;
+    
+    mpd_t *trigger = NULL;
+    mpd_t *amount = NULL;
+    mpd_t *taker_fee = NULL;
+    
+    // trigger
+    if (!json_is_string(json_array_get(params, 3)))
+        goto error;
+    trigger = decimal(json_string_value(json_array_get(params, 3)), market->money_prec);
+    if (trigger == NULL)
+        goto error;
+    if (mpd_cmp(trigger, mpd_zero, &mpd_ctx) <= 0)
+        goto error;
+    
+    // amount
+    if (!json_is_string(json_array_get(params, 4)))
+        goto error;
+    amount = decimal(json_string_value(json_array_get(params, 4)), market->stock_prec);
+    if (amount == NULL)
+        goto error;
+    if (mpd_cmp(amount, mpd_zero, &mpd_ctx) <= 0)
+        goto error;
+    
+    // taker fee
+    if (!json_is_string(json_array_get(params, 5)))
+        goto error;
+    taker_fee = decimal(json_string_value(json_array_get(params, 5)), market->fee_prec);
+    if (taker_fee == NULL)
+        goto error;
+    if (mpd_cmp(taker_fee, mpd_zero, &mpd_ctx) < 0 || mpd_cmp(taker_fee, mpd_one, &mpd_ctx) >= 0)
+        goto error;
+    
+    // source
+    if (!json_is_string(json_array_get(params, 6)))
+        goto error;
+    const char *source = json_string_value(json_array_get(params, 6));
+    if (strlen(source) > SOURCE_MAX_LEN)
+        goto error;
+    
+    int ret = market_put_stop_loss_order(false, NULL, market, user_id, side, trigger, amount, taker_fee, source);
+    
+    mpd_del(trigger);
+    mpd_del(amount);
+    mpd_del(taker_fee);
+    
+    return ret;
+    
+error:
+    if (trigger)
+        mpd_del(trigger);
+    if (amount)
+        mpd_del(amount);
+    if (taker_fee)
+        mpd_del(taker_fee);
+    
+    return -__LINE__;
+}
+
 static int load_limit_order(json_t *params)
 {
     if (json_array_size(params) != 8)
@@ -379,6 +461,8 @@ static int load_oper(json_t *detail)
     int ret = 0;
     if (strcmp(method, "update_balance") == 0) {
         ret = load_update_balance(params);
+    } else if (strcmp(method, "stop_loss_order") == 0) {
+        ret = load_stop_loss_order(params);
     } else if (strcmp(method, "limit_order") == 0) {
         ret = load_limit_order(params);
     } else if (strcmp(method, "market_order") == 0) {
