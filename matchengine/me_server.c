@@ -360,6 +360,11 @@ static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     if (json_array_size(params) != 7)
         return reply_error_invalid_argument(ses, pkg);
     
+    // user_id
+    if (!json_is_integer(json_array_get(params, 0)))
+        return reply_error_invalid_argument(ses, pkg);
+    uint32_t user_id = json_integer_value(json_array_get(params, 0));
+    
     return reply_error(ses, pkg, 100, "temporary fail"); //TEMP
 }
 
