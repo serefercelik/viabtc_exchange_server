@@ -355,6 +355,14 @@ invalid_argument:
     return reply_error_invalid_argument(ses, pkg);
 }
 
+static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
+{
+    if (json_array_size(params) != 7)
+        return reply_error_invalid_argument(ses, pkg);
+    
+    return reply_error(ses, pkg, 100, "temporary fail"); //TEMP
+}
+
 static int on_cmd_order_put_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params)
 {
     if (json_array_size(params) != 8)
@@ -1048,6 +1056,19 @@ static void svr_on_recv_pkg(nw_ses *ses, rpc_pkg *pkg)
         ret = on_cmd_asset_summary(ses, pkg, params);
         if (ret < 0) {
             log_error("on_cmd_asset_summary %s fail: %d", params_str, ret);
+        }
+        break;
+    case CMD_ORDER_PUT_STOP_LOSS:
+        if (is_operlog_block() || is_history_block() || is_message_block()) {
+            log_fatal("service unavailable, operlog: %d, history: %d, message: %d",
+                    is_operlog_block(), is_history_block(), is_message_block());
+            reply_error_service_unavailable(ses, pkg);
+            goto cleanup;
+        }
+        log_trace("from: %s cmd order put stop loss, sequence: %u params: %s", nw_sock_human_addr(&ses->peer_addr), pkg->sequence, params_str);
+        ret = on_cmd_order_put_stop_loss(ses, pkg, params);
+        if (ret < 0) {
+            log_error("on_cmd_order_put_stop_loss %s fail: %d", params_str, ret);
         }
         break;
     case CMD_ORDER_PUT_LIMIT:
