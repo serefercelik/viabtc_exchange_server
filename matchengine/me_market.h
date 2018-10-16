@@ -20,6 +20,7 @@ typedef struct order_t {
     uint32_t        user_id;
     char            *market;
     char            *source;
+    mpd_t           *trigger;
     mpd_t           *price;
     mpd_t           *amount;
     mpd_t           *taker_fee;

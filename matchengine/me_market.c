@@ -620,6 +620,7 @@ int market_put_limit_order(bool real, json_t **result, market_t *m, uint32_t use
     order->market       = strdup(m->name);
     order->source       = strdup(source);
     order->user_id      = user_id;
+    order->trigger      = mpd_new(&mpd_ctx);
     order->price        = mpd_new(&mpd_ctx);
     order->amount       = mpd_new(&mpd_ctx);
     order->taker_fee    = mpd_new(&mpd_ctx);
@@ -630,6 +631,7 @@ int market_put_limit_order(bool real, json_t **result, market_t *m, uint32_t use
     order->deal_money   = mpd_new(&mpd_ctx);
     order->deal_fee     = mpd_new(&mpd_ctx);
 
+    mpd_copy(order->trigger, mpd_zero, &mpd_ctx);
     mpd_copy(order->price, price, &mpd_ctx);
     mpd_copy(order->amount, amount, &mpd_ctx);
     mpd_copy(order->taker_fee, taker_fee, &mpd_ctx);
@@ -945,6 +947,7 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
     order->market       = strdup(m->name);
     order->source       = strdup(source);
     order->user_id      = user_id;
+    order->trigger      = mpd_new(&mpd_ctx);
     order->price        = mpd_new(&mpd_ctx);
     order->amount       = mpd_new(&mpd_ctx);
     order->taker_fee    = mpd_new(&mpd_ctx);
@@ -955,6 +958,7 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
     order->deal_money   = mpd_new(&mpd_ctx);
     order->deal_fee     = mpd_new(&mpd_ctx);
 
+    mpd_copy(order->trigger, mpd_zero, &mpd_ctx);
     mpd_copy(order->price, mpd_zero, &mpd_ctx);
     mpd_copy(order->amount, amount, &mpd_ctx);
     mpd_copy(order->taker_fee, taker_fee, &mpd_ctx);
