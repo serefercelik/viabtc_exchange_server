@@ -381,6 +381,7 @@ static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
         return reply_error_invalid_argument(ses, pkg);
     
     mpd_t *trigger   = NULL;
+    mpd_t *amount    = NULL;
     
     // trigger
     if (!json_is_string(json_array_get(params, 3)))
@@ -389,9 +390,18 @@ static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     if (trigger == NULL || mpd_cmp(trigger, mpd_zero, &mpd_ctx) <= 0)
         goto invalid_argument;
     
+    // amount
+    if (!json_is_string(json_array_get(params, 4)))
+        goto invalid_argument;
+    amount = decimal(json_string_value(json_array_get(params, 4)), market->stock_prec);
+    if (amount == NULL || mpd_cmp(amount, mpd_zero, &mpd_ctx) <= 0)
+        goto invalid_argument;
+    
 invalid_argument:
     if (trigger)
         mpd_del(trigger);
+    if (amount)
+        mpd_del(amount);
     
     return reply_error(ses, pkg, 100, "temporary fail"); //TEMP
 }
