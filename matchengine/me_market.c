@@ -118,6 +118,7 @@ static int order_id_compare(const void *value1, const void *value2)
 
 static void order_free(order_t *order)
 {
+    mpd_del(order->trigger);
     mpd_del(order->price);
     mpd_del(order->amount);
     mpd_del(order->taker_fee);
