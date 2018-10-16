@@ -423,6 +423,8 @@ static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
         return reply_error(ses, pkg, 10, "balance not enough");
     } else if (ret == -2) {
         return reply_error(ses, pkg, 11, "amount too small");
+    } else if (ret == -101) {
+        return reply_error(ses, pkg, 101, "buy stop order not implemented");
     } else if (ret < 0) {
         log_fatal("market_put_stop_loss_order fail: %d", ret);
         return reply_error_internal_error(ses, pkg);
