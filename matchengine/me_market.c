@@ -144,6 +144,7 @@ json_t *get_order_info(order_t *order)
     json_object_set_new(info, "ctime", json_real(order->create_time));
     json_object_set_new(info, "mtime", json_real(order->update_time));
 
+    json_object_set_new_mpd(info, "trigger", order->trigger);
     json_object_set_new_mpd(info, "price", order->price);
     json_object_set_new_mpd(info, "amount", order->amount);
     json_object_set_new_mpd(info, "taker_fee", order->taker_fee);
