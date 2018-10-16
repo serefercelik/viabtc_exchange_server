@@ -16,7 +16,7 @@ int load_orders(MYSQL *conn, const char *table)
     while (true) {
         sds sql = sdsempty();
         sql = sdscatprintf(sql, "SELECT `id`, `t`, `side`, `create_time`, `update_time`, `user_id`, `market`, "
-                "`price`, `amount`, `taker_fee`, `maker_fee`, `left`, `freeze`, `deal_stock`, `deal_money`, `deal_fee` FROM `%s` "
+                "`price`, `amount`, `taker_fee`, `maker_fee`, `left`, `freeze`, `deal_stock`, `deal_money`, `deal_fee`, `trigger` FROM `%s` "
                 "WHERE `id` > %"PRIu64" ORDER BY `id` LIMIT %zu", table, last_id, query_limit);
         log_trace("exec sql: %s", sql);
         int ret = mysql_real_query(conn, sql, sdslen(sql));
@@ -45,6 +45,7 @@ int load_orders(MYSQL *conn, const char *table)
             order->update_time = strtod(row[4], NULL);
             order->user_id = strtoul(row[5], NULL, 0);
             order->market = strdup(row[6]);
+            order->trigger = decimal(row[16], market->money_prec);
             order->price = decimal(row[7], market->money_prec);
             order->amount = decimal(row[8], market->stock_prec);
             order->taker_fee = decimal(row[9], market->fee_prec);
