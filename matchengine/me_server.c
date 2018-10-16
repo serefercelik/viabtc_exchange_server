@@ -412,6 +412,12 @@ static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     if (strlen(source) >= SOURCE_MAX_LEN)
         goto invalid_argument;
     
+    mpd_del(trigger);
+    mpd_del(amount);
+    mpd_del(taker_fee);
+    
+    return reply_error(ses, pkg, 100, "temporary fail"); //TEMP
+    
 invalid_argument:
     if (trigger)
         mpd_del(trigger);
@@ -420,7 +426,7 @@ invalid_argument:
     if (taker_fee)
         mpd_del(taker_fee);
     
-    return reply_error(ses, pkg, 100, "temporary fail"); //TEMP
+    return reply_error_invalid_argument(ses, pkg);
 }
 
 static int on_cmd_order_put_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params)
