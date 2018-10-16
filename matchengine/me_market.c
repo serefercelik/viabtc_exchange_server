@@ -361,6 +361,11 @@ static int append_balance_trade_fee(order_t *order, const char *asset, mpd_t *ch
     return ret;
 }
 
+static int execute_stop_loss_ask_order(bool real, market_t *m, order_t *taker)
+{
+    return -100; //TEMP
+}
+
 static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
 {
     mpd_t *price    = mpd_new(&mpd_ctx);
@@ -616,6 +621,13 @@ int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t
     mpd_copy(order->deal_stock, mpd_zero, &mpd_ctx);
     mpd_copy(order->deal_money, mpd_zero, &mpd_ctx);
     mpd_copy(order->deal_fee, mpd_zero, &mpd_ctx);
+    
+    int ret = execute_stop_loss_ask_order(real, m, order);
+    if (ret < 0) {
+        log_error("execute order: %"PRIu64" fail: %d", order->id, ret);
+        order_free(order);
+        return -__LINE__;
+    }
     
     
     order_free(order);
