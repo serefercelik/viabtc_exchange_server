@@ -382,6 +382,7 @@ static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     
     mpd_t *trigger   = NULL;
     mpd_t *amount    = NULL;
+    mpd_t *taker_fee = NULL;
     
     // trigger
     if (!json_is_string(json_array_get(params, 3)))
@@ -397,11 +398,20 @@ static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     if (amount == NULL || mpd_cmp(amount, mpd_zero, &mpd_ctx) <= 0)
         goto invalid_argument;
     
+    // taker fee
+    if (!json_is_string(json_array_get(params, 5)))
+        goto invalid_argument;
+    taker_fee = decimal(json_string_value(json_array_get(params, 5)), market->fee_prec);
+    if (taker_fee == NULL || mpd_cmp(taker_fee, mpd_zero, &mpd_ctx) < 0 || mpd_cmp(taker_fee, mpd_one, &mpd_ctx) >= 0)
+        goto invalid_argument;
+    
 invalid_argument:
     if (trigger)
         mpd_del(trigger);
     if (amount)
         mpd_del(amount);
+    if (taker_fee)
+        mpd_del(taker_fee);
     
     return reply_error(ses, pkg, 100, "temporary fail"); //TEMP
 }
