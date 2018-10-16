@@ -582,6 +582,43 @@ int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t
         return -2;
     }
     
+    order_t *order = malloc(sizeof(order_t));
+    if (order == NULL) {
+        return -__LINE__;
+    }
+    
+    order->id           = ++order_id_start;
+    order->type         = MARKET_ORDER_TYPE_STOP_LOSS;
+    order->side         = side;
+    order->create_time  = current_timestamp();
+    order->update_time  = order->create_time;
+    order->market       = strdup(m->name);
+    order->source       = strdup(source);
+    order->user_id      = user_id;
+    order->trigger      = mpd_new(&mpd_ctx);
+    order->price        = mpd_new(&mpd_ctx);
+    order->amount       = mpd_new(&mpd_ctx);
+    order->taker_fee    = mpd_new(&mpd_ctx);
+    order->maker_fee    = mpd_new(&mpd_ctx);
+    order->left         = mpd_new(&mpd_ctx);
+    order->freeze       = mpd_new(&mpd_ctx);
+    order->deal_stock   = mpd_new(&mpd_ctx);
+    order->deal_money   = mpd_new(&mpd_ctx);
+    order->deal_fee     = mpd_new(&mpd_ctx);
+    
+    mpd_copy(order->trigger, trigger, &mpd_ctx);
+    mpd_copy(order->price, mpd_zero, &mpd_ctx);
+    mpd_copy(order->amount, amount, &mpd_ctx);
+    mpd_copy(order->taker_fee, taker_fee, &mpd_ctx);
+    mpd_copy(order->maker_fee, mpd_zero, &mpd_ctx);
+    mpd_copy(order->left, mpd_zero, &mpd_ctx);
+    mpd_copy(order->freeze, mpd_zero, &mpd_ctx);
+    mpd_copy(order->deal_stock, mpd_zero, &mpd_ctx);
+    mpd_copy(order->deal_money, mpd_zero, &mpd_ctx);
+    mpd_copy(order->deal_fee, mpd_zero, &mpd_ctx);
+    
+    
+    order_free(order);
     return -100; //TEMP
 }
 
