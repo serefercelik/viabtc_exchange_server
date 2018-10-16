@@ -578,6 +578,10 @@ int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t
         return -101;
     }
     
+    if (mpd_cmp(amount, m->min_amount, &mpd_ctx) < 0) {
+        return -2;
+    }
+    
     return -100; //TEMP
 }
 
