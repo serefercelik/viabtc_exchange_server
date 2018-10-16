@@ -430,6 +430,8 @@ static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
         return reply_error_internal_error(ses, pkg);
     }
     
+    append_operlog("stop_loss_order", params);
+    
     return reply_error(ses, pkg, 100, "temporary fail"); //TEMP
     
 invalid_argument:
