@@ -431,8 +431,9 @@ static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     }
     
     append_operlog("stop_loss_order", params);
-    
-    return reply_error(ses, pkg, 100, "temporary fail"); //TEMP
+    ret = reply_result(ses, pkg, result);
+    json_decref(result);
+    return ret;
     
 invalid_argument:
     if (trigger)
