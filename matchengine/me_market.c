@@ -613,7 +613,7 @@ int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t
     mpd_copy(order->amount, amount, &mpd_ctx);
     mpd_copy(order->taker_fee, taker_fee, &mpd_ctx);
     mpd_copy(order->maker_fee, mpd_zero, &mpd_ctx);
-    mpd_copy(order->left, mpd_zero, &mpd_ctx);
+    mpd_copy(order->left, amount, &mpd_ctx);
     mpd_copy(order->freeze, mpd_zero, &mpd_ctx);
     mpd_copy(order->deal_stock, mpd_zero, &mpd_ctx);
     mpd_copy(order->deal_money, mpd_zero, &mpd_ctx);
