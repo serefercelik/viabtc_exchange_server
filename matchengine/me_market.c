@@ -373,8 +373,21 @@ static int append_balance_trade_fee(order_t *order, const char *asset, mpd_t *ch
 
 static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
 {
+    skiplist_node *node;
+    skiplist_iter *iter = skiplist_get_iterator(m->stop_asks);
+    int ret = 0;
+    json_t *result = json_object();
+    while ((node = skiplist_next(iter)) != NULL) {
+        order_t *order = node->value;
+        if (mpd_cmp(order->trigger, maker->price, &mpd_ctx) > 0)
+            continue;
+        ret = market_put_market_order(true, &result, m, order->user_id, 1, order->amount, order->taker_fee, order->source);
+        if (ret < 0)
+            break;
+    }
+    skiplist_release_iterator(iter);
     
-    return 0;
+    return ret;
 }
 
 static int trigger_stop_loss_orders(market_t *m, mpd_t *price)
