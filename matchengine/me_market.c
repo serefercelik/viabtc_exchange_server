@@ -307,7 +307,8 @@ market_t *market_create(struct market *conf)
 
     m->asks = skiplist_create(&lt);
     m->bids = skiplist_create(&lt);
-    if (m->asks == NULL || m->bids == NULL)
+    m->stop_asks = skiplist_create(&lt);
+    if (m->asks == NULL || m->bids == NULL || m->stop_asks == NULL)
         return NULL;
 
     return m;
