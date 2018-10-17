@@ -379,7 +379,7 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     json_t *result = json_object();
     while ((node = skiplist_next(iter)) != NULL) {
         order_t *order = node->value;
-        if (mpd_cmp(order->trigger, maker->price, &mpd_ctx) > 0)
+        if (mpd_cmp(order->trigger, price, &mpd_ctx) > 0)
             continue;
         ret = market_put_market_order(true, &result, m, order->user_id, 1, order->amount, order->taker_fee, order->source);
         if (ret < 0)
