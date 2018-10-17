@@ -119,6 +119,11 @@ int dump_orders(MYSQL *conn, const char *table)
             log_error("dump market: %s bids orders list fail: %d", market->name, ret);
             return -__LINE__;
         }
+        ret = dump_orders_list(conn, table, market->stop_asks);
+        if (ret < 0) {
+            log_error("dump market: %s stop asks orders list fail: %d", market->name, ret);
+            return -__LINE__;
+        }
     }
 
     return 0;
