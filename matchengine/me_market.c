@@ -371,6 +371,11 @@ static int append_balance_trade_fee(order_t *order, const char *asset, mpd_t *ch
     return ret;
 }
 
+static int trigger_stop_loss_orders(market_t *m)
+{
+    
+}
+
 static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
 {
     mpd_t *price    = mpd_new(&mpd_ctx);
@@ -470,6 +475,8 @@ static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
     mpd_del(ask_fee);
     mpd_del(bid_fee);
     mpd_del(result);
+    
+    trigger_stop_loss_orders(m);
 
     return 0;
 }
@@ -573,6 +580,8 @@ static int execute_limit_bid_order(bool real, market_t *m, order_t *taker)
     mpd_del(ask_fee);
     mpd_del(bid_fee);
     mpd_del(result);
+    
+    trigger_stop_loss_orders(m);
 
     return 0;
 }
@@ -827,6 +836,8 @@ static int execute_market_ask_order(bool real, market_t *m, order_t *taker)
     mpd_del(ask_fee);
     mpd_del(bid_fee);
     mpd_del(result);
+    
+    trigger_stop_loss_orders(m);
 
     return 0;
 }
@@ -941,6 +952,8 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker)
     mpd_del(ask_fee);
     mpd_del(bid_fee);
     mpd_del(result);
+    
+    trigger_stop_loss_orders(m);
 
     return 0;
 }
