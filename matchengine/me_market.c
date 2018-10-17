@@ -187,12 +187,19 @@ static int order_put(market_t *m, order_t *order)
     }
 
     if (order->side == MARKET_ORDER_SIDE_ASK) {
-        if (skiplist_insert(m->asks, order) == NULL)
-            return -__LINE__;
+        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
+            if (skiplist_insert(m->stop_asks, order) == NULL)
+                return -__LINE__;
+        } else {
+            if (skiplist_insert(m->asks, order) == NULL)
+                return -__LINE__;
+        }
         mpd_copy(order->freeze, order->left, &mpd_ctx);
         if (balance_freeze(order->user_id, m->stock, order->left) == NULL)
             return -__LINE__;
     } else {
+        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS)
+            return -__LINE__;
         if (skiplist_insert(m->bids, order) == NULL)
             return -__LINE__;
         mpd_t *result = mpd_new(&mpd_ctx);
