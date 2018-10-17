@@ -371,15 +371,16 @@ static int append_balance_trade_fee(order_t *order, const char *asset, mpd_t *ch
     return ret;
 }
 
-static int trigger_sell_stop_orders(market_t *m)
+static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
 {
+    
     return 0;
 }
 
-static int trigger_stop_loss_orders(market_t *m)
+static int trigger_stop_loss_orders(market_t *m, mpd_t *price)
 {
     int ret;
-    ret = trigger_sell_stop_orders(m);
+    ret = trigger_sell_stop_orders(m, price);
     if (ret < 0)
         return ret;
     return 0;
@@ -477,6 +478,8 @@ static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
         }
     }
     skiplist_release_iterator(iter);
+    
+    int ret = trigger_stop_loss_orders(m, price);
 
     mpd_del(amount);
     mpd_del(price);
@@ -484,12 +487,8 @@ static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
     mpd_del(ask_fee);
     mpd_del(bid_fee);
     mpd_del(result);
-    
-    int ret = trigger_stop_loss_orders(m);
-    if (ret < 0)
-        return ret;
 
-    return 0;
+    return ret;
 }
 
 static int execute_limit_bid_order(bool real, market_t *m, order_t *taker)
@@ -584,6 +583,8 @@ static int execute_limit_bid_order(bool real, market_t *m, order_t *taker)
         }
     }
     skiplist_release_iterator(iter);
+    
+    int ret = trigger_stop_loss_orders(m, price);
 
     mpd_del(amount);
     mpd_del(price);
@@ -591,12 +592,8 @@ static int execute_limit_bid_order(bool real, market_t *m, order_t *taker)
     mpd_del(ask_fee);
     mpd_del(bid_fee);
     mpd_del(result);
-    
-    int ret = trigger_stop_loss_orders(m);
-    if (ret < 0)
-        return ret;
 
-    return 0;
+    return ret;
 }
 
 int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *trigger, mpd_t *amount, mpd_t *taker_fee, const char *source)
@@ -842,6 +839,8 @@ static int execute_market_ask_order(bool real, market_t *m, order_t *taker)
         }
     }
     skiplist_release_iterator(iter);
+    
+    int ret = trigger_stop_loss_orders(m, price);
 
     mpd_del(amount);
     mpd_del(price);
@@ -849,12 +848,8 @@ static int execute_market_ask_order(bool real, market_t *m, order_t *taker)
     mpd_del(ask_fee);
     mpd_del(bid_fee);
     mpd_del(result);
-    
-    int ret = trigger_stop_loss_orders(m);
-    if (ret < 0)
-        return ret;
 
-    return 0;
+    return ret;
 }
 
 static int execute_market_bid_order(bool real, market_t *m, order_t *taker)
@@ -960,6 +955,8 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker)
         }
     }
     skiplist_release_iterator(iter);
+    
+    int ret = trigger_stop_loss_orders(m, price);
 
     mpd_del(amount);
     mpd_del(price);
@@ -967,12 +964,8 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker)
     mpd_del(ask_fee);
     mpd_del(bid_fee);
     mpd_del(result);
-    
-    int ret = trigger_stop_loss_orders(m);
-    if (ret < 0)
-        return ret;
 
-    return 0;
+    return ret;
 }
 
 int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *taker_fee, const char *source)
