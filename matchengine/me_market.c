@@ -379,11 +379,7 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
 
 static int trigger_stop_loss_orders(market_t *m, mpd_t *price)
 {
-    int ret;
-    ret = trigger_sell_stop_orders(m, price);
-    if (ret < 0)
-        return ret;
-    return 0;
+    return trigger_sell_stop_orders(m, price);
 }
 
 static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
