@@ -371,9 +371,18 @@ static int append_balance_trade_fee(order_t *order, const char *asset, mpd_t *ch
     return ret;
 }
 
+static int trigger_sell_stop_orders(market_t *m)
+{
+    return 0;
+}
+
 static int trigger_stop_loss_orders(market_t *m)
 {
-    
+    int ret;
+    ret = trigger_sell_stop_orders(m);
+    if (ret < 0)
+        return ret;
+    return 0;
 }
 
 static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
