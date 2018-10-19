@@ -857,13 +857,11 @@ static int execute_market_ask_order(bool real, market_t *m, order_t *taker, mpd_
 
     skiplist_node *node;
     skiplist_iter *iter = skiplist_get_iterator(m->bids);
-    bool dealt = false;
     while ((node = skiplist_next(iter)) != NULL) {
         if (mpd_cmp(taker->left, mpd_zero, &mpd_ctx) == 0) {
             break;
         }
 
-        dealt = true;
         order_t *maker = node->value;
         mpd_copy(price, maker->price, &mpd_ctx);
         if (mpd_cmp(taker->left, maker->left, &mpd_ctx) < 0) {
