@@ -831,7 +831,7 @@ int market_put_limit_order(bool real, json_t **result, market_t *m, uint32_t use
             log_fatal("order_put fail: %d, order: %"PRIu64"", ret, order->id);
         }
     }
-    if (real) {
+    if (real && last_price->len > 0) {
         ret = trigger_stop_loss_orders(m, last_price);
         if (ret < 0) {
             log_error("trigger stop loss orders fail: %d, order: %"PRIu64"", ret, order_id);
@@ -1166,12 +1166,14 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
         push_order_message(ORDER_EVENT_FINISH, order, m);
         *result = get_order_info(order);
         
+        if (last_price->len > 0) {
         ret = trigger_stop_loss_orders(m, last_price);
-        if (ret < 0) {
-            log_error("trigger stop loss orders fail: %d, order: %"PRIu64"", ret, order->id);
-            order_free(order);
-            mpd_del(last_price);
-            return -__LINE__;
+            if (ret < 0) {
+                log_error("trigger stop loss orders fail: %d, order: %"PRIu64"", ret, order->id);
+                order_free(order);
+                mpd_del(last_price);
+                return -__LINE__;
+            }
         }
     }
 
