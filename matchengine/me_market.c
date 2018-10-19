@@ -936,11 +936,6 @@ static int execute_market_ask_order(bool real, market_t *m, order_t *taker, mpd_
         }
     }
     skiplist_release_iterator(iter);
-    
-    int ret = 0;
-    if (real && dealt) {
-        ret = trigger_stop_loss_orders(m, price);
-    }
 
     mpd_del(amount);
     if (last_price) {
@@ -953,7 +948,7 @@ static int execute_market_ask_order(bool real, market_t *m, order_t *taker, mpd_
     mpd_del(bid_fee);
     mpd_del(result);
 
-    return ret;
+    return 0;
 }
 
 static int execute_market_bid_order(bool real, market_t *m, order_t *taker, mpd_t **last_price)
@@ -1061,11 +1056,6 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker, mpd_
         }
     }
     skiplist_release_iterator(iter);
-    
-    int ret = 0;
-    if (real && dealt) {
-        ret = trigger_stop_loss_orders(m, price);
-    }
 
     mpd_del(amount);
     if (last_price) {
@@ -1078,7 +1068,7 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker, mpd_
     mpd_del(bid_fee);
     mpd_del(result);
 
-    return ret;
+    return 0;
 }
 
 int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *taker_fee, const char *source)
@@ -1161,14 +1151,16 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
 
     dlog_flush_all();
     int ret;
+    mpd_t *last_price = mpd_new(&mpd_ctx);
     if (side == MARKET_ORDER_SIDE_ASK) {
-        ret = execute_market_ask_order(real, m, order, NULL);
+        ret = execute_market_ask_order(real, m, order, &last_price);
     } else {
-        ret = execute_market_bid_order(real, m, order, NULL);
+        ret = execute_market_bid_order(real, m, order, &last_price);
     }
     if (ret < 0) {
         log_error("execute order: %"PRIu64" fail: %d", order->id, ret);
         order_free(order);
+        mpd_del(last_price);
         return -__LINE__;
     }
 
@@ -1179,9 +1171,18 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
         }
         push_order_message(ORDER_EVENT_FINISH, order, m);
         *result = get_order_info(order);
+        
+        ret = trigger_stop_loss_orders(m, last_price);
+        if (ret < 0) {
+            log_error("trigger stop loss orders fail: %d, order: %"PRIu64"", ret, order->id);
+            order_free(order);
+            mpd_del(last_price);
+            return -__LINE__;
+        }
     }
 
     order_free(order);
+    mpd_del(last_price);
     return 0;
 }
 
