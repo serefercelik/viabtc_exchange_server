@@ -385,6 +385,7 @@ static int append_balance_trade_fee(order_t *order, const char *asset, mpd_t *ch
 
 static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
 {
+    // Find triggered orders
     skiplist_type lt;
     memset(&lt, 0, sizeof(lt));
     lt.compare = order_match_compare;
@@ -404,6 +405,8 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
         skiplist_release(triggered);
         return ret;
     }
+    
+    // Convert triggered orders
     iter = skiplist_get_iterator(triggered);
     json_t *result = json_object();
     mpd_t *new_price = mpd_new(&mpd_ctx);
@@ -418,10 +421,14 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     skiplist_release_iterator(iter);
     skiplist_release(triggered);
     json_decref(result);
+    
+    // Finish if price unchanged
     if (mpd_cmp(new_price, price, &mpd_ctx) == 0) {
         mpd_del(new_price);
         return ret;
     }
+    
+    // Trigger again if price changed
     mpd_copy(price, new_price, &mpd_ctx);
     mpd_del(new_price);
     return trigger_sell_stop_orders(m, price);
