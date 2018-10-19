@@ -1167,7 +1167,7 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
         *result = get_order_info(order);
         
         if (last_price->len > 0) {
-        ret = trigger_stop_loss_orders(m, last_price);
+            ret = trigger_stop_loss_orders(m, last_price);
             if (ret < 0) {
                 log_error("trigger stop loss orders fail: %d, order: %"PRIu64"", ret, order->id);
                 order_free(order);
