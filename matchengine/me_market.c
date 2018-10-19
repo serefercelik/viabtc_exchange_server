@@ -581,7 +581,6 @@ static int execute_limit_bid_order(bool real, market_t *m, order_t *taker, mpd_t
 
     skiplist_node *node;
     skiplist_iter *iter = skiplist_get_iterator(m->asks);
-    bool dealt = false;
     while ((node = skiplist_next(iter)) != NULL) {
         if (mpd_cmp(taker->left, mpd_zero, &mpd_ctx) == 0) {
             break;
@@ -592,7 +591,6 @@ static int execute_limit_bid_order(bool real, market_t *m, order_t *taker, mpd_t
             break;
         }
 
-        dealt = true;
         mpd_copy(price, maker->price, &mpd_ctx);
         if (mpd_cmp(taker->left, maker->left, &mpd_ctx) < 0) {
             mpd_copy(amount, taker->left, &mpd_ctx);
