@@ -948,7 +948,7 @@ static int execute_market_ask_order(bool real, market_t *m, order_t *taker, mpd_
     return ret;
 }
 
-static int execute_market_bid_order(bool real, market_t *m, order_t *taker)
+static int execute_market_bid_order(bool real, market_t *m, order_t *taker, mpd_t **last_price)
 {
     mpd_t *price    = mpd_new(&mpd_ctx);
     mpd_t *amount   = mpd_new(&mpd_ctx);
@@ -1060,7 +1060,11 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker)
     }
 
     mpd_del(amount);
-    mpd_del(price);
+    if (last_price) {
+        *last_price = price;
+    } else {
+        mpd_del(price);
+    }
     mpd_del(deal);
     mpd_del(ask_fee);
     mpd_del(bid_fee);
@@ -1152,7 +1156,7 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
     if (side == MARKET_ORDER_SIDE_ASK) {
         ret = execute_market_ask_order(real, m, order, NULL);
     } else {
-        ret = execute_market_bid_order(real, m, order);
+        ret = execute_market_bid_order(real, m, order, NULL);
     }
     if (ret < 0) {
         log_error("execute order: %"PRIu64" fail: %d", order->id, ret);
