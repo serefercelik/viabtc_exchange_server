@@ -443,11 +443,11 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     }
     iter = skiplist_get_iterator(triggered);
     json_t *result = json_object();
+    mpd_t *new_price = mpd_new(&mpd_ctx);
     while ((node = skiplist_next(iter)) != NULL) {
         order_t *order = node->value;
-        order_t *copy = order_copy(order);
+        ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->taker_fee, order->source, &new_price);
         order_finish(true, m, order);
-        ret = market_put_market_order(true, true, &result, m, copy->user_id, MARKET_ORDER_SIDE_ASK, copy->amount, copy->taker_fee, copy->source, NULL);
         if (ret < 0) {
             break;
         }
@@ -455,7 +455,13 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     skiplist_release_iterator(iter);
     skiplist_release(triggered);
     json_decref(result);
-    return ret;
+    if (mpd_cmp(new_price, price, &mpd_ctx) == 0) {
+        mpd_del(new_price);
+        return ret;
+    }
+    mpd_copy(price, new_price, &mpd_ctx);
+    mpd_del(new_price);
+    return trigger_sell_stop_orders(m, price);
 }
 
 static int trigger_stop_loss_orders(market_t *m, mpd_t *price)
