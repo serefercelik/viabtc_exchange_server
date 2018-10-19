@@ -133,43 +133,6 @@ static void order_free(order_t *order)
     free(order);
 }
 
-static order_t *order_copy(order_t *order)
-{
-    order_t *copy = malloc(sizeof(order_t));
-    
-    copy->trigger       = mpd_new(&mpd_ctx);
-    copy->price         = mpd_new(&mpd_ctx);
-    copy->amount        = mpd_new(&mpd_ctx);
-    copy->taker_fee     = mpd_new(&mpd_ctx);
-    copy->maker_fee     = mpd_new(&mpd_ctx);
-    copy->left          = mpd_new(&mpd_ctx);
-    copy->freeze        = mpd_new(&mpd_ctx);
-    copy->deal_stock    = mpd_new(&mpd_ctx);
-    copy->deal_money    = mpd_new(&mpd_ctx);
-    copy->deal_fee      = mpd_new(&mpd_ctx);
-    
-    copy->id            = order->id;
-    copy->type          = order->type;
-    copy->side          = order->side;
-    copy->create_time   = order->create_time;
-    copy->update_time   = order->update_time;
-    copy->market        = strdup(order->market);
-    copy->source        = strdup(order->source);
-    copy->user_id       = order->user_id;
-    mpd_copy(copy->trigger, order->trigger, &mpd_ctx);
-    mpd_copy(copy->price, order->price, &mpd_ctx);
-    mpd_copy(copy->amount, order->amount, &mpd_ctx);
-    mpd_copy(copy->taker_fee, order->taker_fee, &mpd_ctx);
-    mpd_copy(copy->maker_fee, order->maker_fee, &mpd_ctx);
-    mpd_copy(copy->left, order->left, &mpd_ctx);
-    mpd_copy(copy->freeze, order->freeze, &mpd_ctx);
-    mpd_copy(copy->deal_stock, order->deal_stock, &mpd_ctx);
-    mpd_copy(copy->deal_money, order->deal_money, &mpd_ctx);
-    mpd_copy(copy->deal_fee, order->deal_fee, &mpd_ctx);
-    
-    return copy;
-}
-
 json_t *get_order_info(order_t *order)
 {
     json_t *info = json_object();
