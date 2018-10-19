@@ -396,7 +396,7 @@ static int load_market_order(json_t *params)
     if (strlen(source) > SOURCE_MAX_LEN)
         goto error;
 
-    int ret = market_put_market_order(false, NULL, market, user_id, side, amount, taker_fee, source);
+    int ret = market_put_market_order(false, NULL, market, user_id, side, amount, taker_fee, source, NULL);
 
     mpd_del(amount);
     mpd_del(taker_fee);

@@ -447,7 +447,7 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
         order_t *order = node->value;
         order_t *copy = order_copy(order);
         order_finish(true, m, order);
-        ret = market_put_market_order(true, &result, m, copy->user_id, MARKET_ORDER_SIDE_ASK, copy->amount, copy->taker_fee, copy->source);
+        ret = market_put_market_order(true, &result, m, copy->user_id, MARKET_ORDER_SIDE_ASK, copy->amount, copy->taker_fee, copy->source, NULL);
         if (ret < 0) {
             break;
         }
@@ -1065,7 +1065,7 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker, mpd_
     return 0;
 }
 
-int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *taker_fee, const char *source)
+int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *taker_fee, const char *source, mpd_t **new_price)
 {
     if (side == MARKET_ORDER_SIDE_ASK) {
         mpd_t *balance = balance_get(user_id, BALANCE_TYPE_AVAILABLE, m->stock);
@@ -1178,7 +1178,11 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
     }
 
     order_free(order);
-    mpd_del(last_price);
+    if (new_price) {
+        *new_price = last_price;
+    } else {
+        mpd_del(last_price);
+    }
     return 0;
 }
 
