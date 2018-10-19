@@ -447,7 +447,7 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
         order_t *order = node->value;
         order_t *copy = order_copy(order);
         order_finish(true, m, order);
-        ret = market_put_market_order(true, &result, m, copy->user_id, MARKET_ORDER_SIDE_ASK, copy->amount, copy->taker_fee, copy->source, NULL);
+        ret = market_put_market_order(true, true, &result, m, copy->user_id, MARKET_ORDER_SIDE_ASK, copy->amount, copy->taker_fee, copy->source, NULL);
         if (ret < 0) {
             break;
         }
@@ -1065,7 +1065,7 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker, mpd_
     return 0;
 }
 
-int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *taker_fee, const char *source, mpd_t **new_price)
+int market_put_market_order(bool real, bool trigger, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *taker_fee, const char *source, mpd_t **new_price)
 {
     if (side == MARKET_ORDER_SIDE_ASK) {
         mpd_t *balance = balance_get(user_id, BALANCE_TYPE_AVAILABLE, m->stock);
@@ -1166,7 +1166,7 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
         push_order_message(ORDER_EVENT_FINISH, order, m);
         *result = get_order_info(order);
         
-        if (last_price->len > 0) {
+        if (trigger && last_price->len > 0) {
             ret = trigger_stop_loss_orders(m, last_price);
             if (ret < 0) {
                 log_error("trigger stop loss orders fail: %d, order: %"PRIu64"", ret, order->id);
