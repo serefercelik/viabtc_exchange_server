@@ -437,7 +437,7 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
         skiplist_insert(triggered, order);
     }
     skiplist_release_iterator(iter);
-    if (ret < 0) {
+    if (ret < 0 || triggered->len == 0) {
         skiplist_release(triggered);
         return ret;
     }
