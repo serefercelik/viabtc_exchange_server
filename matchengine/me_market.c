@@ -940,8 +940,6 @@ static int execute_market_ask_order(bool real, market_t *m, order_t *taker)
     mpd_del(ask_fee);
     mpd_del(bid_fee);
     mpd_del(result);
-    
-    log_info("finish execute_market_ask_order");
 
     return ret;
 }
