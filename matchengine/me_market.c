@@ -1154,6 +1154,15 @@ int market_put_market_order(bool real, bool trigger, json_t **result, market_t *
         }
     } else {
         ret = execute_market_bid_order(real, m, order, &last_price);
+        if (real && trigger && last_price->len > 0) {
+            ret = trigger_buy_stop_orders(m, last_price);
+            if (ret < 0) {
+                log_error("trigger buy stop orders fail: %d, order: %"PRIu64"", ret, order->id);
+                order_free(order);
+                mpd_del(last_price);
+                return -__LINE__;
+            }
+        }
     }
     if (ret < 0) {
         log_error("execute order: %"PRIu64" fail: %d", order->id, ret);
