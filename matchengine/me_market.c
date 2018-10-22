@@ -434,6 +434,11 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     return trigger_sell_stop_orders(m, price);
 }
 
+static int trigger_buy_stop_orders(market_t *m, mpd_t *price)
+{
+    return 0;
+}
+
 static int execute_limit_ask_order(bool real, market_t *m, order_t *taker, mpd_t **last_price)
 {
     mpd_t *price    = mpd_new(&mpd_ctx);
