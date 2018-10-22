@@ -1124,6 +1124,15 @@ int market_put_market_order(bool real, bool trigger, json_t **result, market_t *
     mpd_t *last_price = mpd_new(&mpd_ctx);
     if (side == MARKET_ORDER_SIDE_ASK) {
         ret = execute_market_ask_order(real, m, order, &last_price);
+        if (trigger && last_price->len > 0) {
+            ret = trigger_sell_stop_orders(m, last_price);
+            if (ret < 0) {
+                log_error("trigger sell stop orders fail: %d, order: %"PRIu64"", ret, order->id);
+                order_free(order);
+                mpd_del(last_price);
+                return -__LINE__;
+            }
+        }
     } else {
         ret = execute_market_bid_order(real, m, order, &last_price);
     }
@@ -1141,16 +1150,6 @@ int market_put_market_order(bool real, bool trigger, json_t **result, market_t *
         }
         push_order_message(ORDER_EVENT_FINISH, order, m);
         *result = get_order_info(order);
-        
-        if (trigger && last_price->len > 0) {
-            ret = trigger_stop_loss_orders(m, last_price);
-            if (ret < 0) {
-                log_error("trigger stop loss orders fail: %d, order: %"PRIu64"", ret, order->id);
-                order_free(order);
-                mpd_del(last_price);
-                return -__LINE__;
-            }
-        }
     }
 
     order_free(order);
