@@ -1124,7 +1124,7 @@ int market_put_market_order(bool real, bool trigger, json_t **result, market_t *
     mpd_t *last_price = mpd_new(&mpd_ctx);
     if (side == MARKET_ORDER_SIDE_ASK) {
         ret = execute_market_ask_order(real, m, order, &last_price);
-        if (trigger && last_price->len > 0) {
+        if (real && trigger && last_price->len > 0) {
             ret = trigger_sell_stop_orders(m, last_price);
             if (ret < 0) {
                 log_error("trigger sell stop orders fail: %d, order: %"PRIu64"", ret, order->id);
