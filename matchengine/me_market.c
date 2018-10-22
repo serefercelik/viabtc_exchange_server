@@ -243,13 +243,25 @@ static int order_finish(bool real, market_t *m, order_t *order)
             }
         }
     } else {
-        skiplist_node *node = skiplist_find(m->bids, order);
-        if (node) {
-            skiplist_delete(m->bids, node);
-        }
-        if (mpd_cmp(order->freeze, mpd_zero, &mpd_ctx) > 0) {
-            if (balance_unfreeze(order->user_id, m->money, order->freeze) == NULL) {
-                return -__LINE__;
+        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
+            skiplist_node *node = skiplist_find(m->stop_bids, order);
+            if (node) {
+                skiplist_delete(m->stop_bids, node);
+            }
+            if (mpd_cmp(order->freeze, mpd_zero, &mpd_ctx) > 0) {
+                if (balance_unfreeze(order->user_id, m->money, order->freeze) == NULL) {
+                    return -__LINE__;
+                }
+            }
+        } else {
+            skiplist_node *node = skiplist_find(m->bids, order);
+            if (node) {
+                skiplist_delete(m->bids, node);
+            }
+            if (mpd_cmp(order->freeze, mpd_zero, &mpd_ctx) > 0) {
+                if (balance_unfreeze(order->user_id, m->money, order->freeze) == NULL) {
+                    return -__LINE__;
+                }
             }
         }
     }
