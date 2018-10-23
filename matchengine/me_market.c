@@ -239,7 +239,7 @@ static int order_put(market_t *m, order_t *order)
 static int order_finish(bool real, market_t *m, order_t *order)
 {
     if (order->side == MARKET_ORDER_SIDE_ASK) {
-        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
+        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS || order->type == MARKET_ORDER_TYPE_STOP_LIMIT) {
             skiplist_node *node = skiplist_find(m->stop_asks, order);
             if (node) {
                 skiplist_delete(m->stop_asks, node);
@@ -261,7 +261,7 @@ static int order_finish(bool real, market_t *m, order_t *order)
             }
         }
     } else {
-        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
+        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS || order->type == MARKET_ORDER_TYPE_STOP_LIMIT) {
             skiplist_node *node = skiplist_find(m->stop_bids, order);
             if (node) {
                 skiplist_delete(m->stop_bids, node);
