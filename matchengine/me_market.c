@@ -865,7 +865,16 @@ int market_put_stop_limit_order(bool real, json_t **result, market_t *m, uint32_
     mpd_copy(order->deal_money, mpd_zero, &mpd_ctx);
     mpd_copy(order->deal_fee, mpd_zero, &mpd_ctx);
     
-    return -101;
+    if (real) {
+        push_order_message(ORDER_EVENT_PUT, order, m);
+        *result = get_order_info(order);
+    }
+    int ret = order_put(m, order);
+    if (ret < 0) {
+        log_fatal("order_put fail: %d, order: %"PRIu64"", ret, order->id);
+    }
+    
+    return 0;
 }
 
 int market_put_limit_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *price, mpd_t *taker_fee, mpd_t *maker_fee, const char *source)
