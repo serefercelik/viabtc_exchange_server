@@ -160,8 +160,14 @@ json_t *get_order_info(order_t *order)
 
 static int order_put(market_t *m, order_t *order)
 {
-    if (order->type != MARKET_ORDER_TYPE_LIMIT && order->type != MARKET_ORDER_TYPE_STOP_LOSS)
-        return -__LINE__;
+    switch (order->type) {
+        case MARKET_ORDER_TYPE_LIMIT:
+        case MARKET_ORDER_TYPE_STOP_LOSS:
+        case MARKET_ORDER_TYPE_STOP_LIMIT:
+            break;
+        default:
+            return -__LINE__;
+    }
 
     struct dict_order_key order_key = { .order_id = order->id };
     if (dict_add(m->orders, &order_key, order) == NULL)
@@ -187,22 +193,34 @@ static int order_put(market_t *m, order_t *order)
     }
 
     if (order->side == MARKET_ORDER_SIDE_ASK) {
-        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
-            if (skiplist_insert(m->stop_asks, order) == NULL)
-                return -__LINE__;
-        } else {
-            if (skiplist_insert(m->asks, order) == NULL)
+        switch (order->type) {
+            case MARKET_ORDER_TYPE_LIMIT:
+                if (skiplist_insert(m->asks, order) == NULL)
+                    return -__LINE__;
+                break;
+            case MARKET_ORDER_TYPE_STOP_LOSS:
+            case MARKET_ORDER_TYPE_STOP_LIMIT:
+                if (skiplist_insert(m->stop_asks, order) == NULL)
+                    return -__LINE__;
+                break;
+            default:
                 return -__LINE__;
         }
         mpd_copy(order->freeze, order->left, &mpd_ctx);
         if (balance_freeze(order->user_id, m->stock, order->left) == NULL)
             return -__LINE__;
     } else {
-        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
-            if (skiplist_insert(m->stop_bids, order) == NULL)
-                return -__LINE__;
-        } else {
-            if (skiplist_insert(m->bids, order) == NULL)
+        switch (order->type) {
+            case MARKET_ORDER_TYPE_LIMIT:
+                if (skiplist_insert(m->bids, order) == NULL)
+                    return -__LINE__;
+                break;
+            case MARKET_ORDER_TYPE_STOP_LOSS:
+            case MARKET_ORDER_TYPE_STOP_LIMIT:
+                if (skiplist_insert(m->stop_bids, order) == NULL)
+                    return -__LINE__;
+                break;
+            default:
                 return -__LINE__;
         }
         mpd_t *result = mpd_new(&mpd_ctx);
@@ -428,7 +446,11 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     mpd_t *new_price = mpd_new(&mpd_ctx);
     while ((node = skiplist_next(iter)) != NULL) {
         order_t *order = node->value;
-        ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->taker_fee, order->source, &new_price);
+        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
+            ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->taker_fee, order->source, &new_price);
+        } else {
+            ret = market_put_limit_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->price, order->taker_fee, order->maker_fee, order->source, &new_price);
+        }
         order_finish(true, m, order);
         if (ret < 0) {
             break;
