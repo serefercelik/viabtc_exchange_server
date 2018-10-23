@@ -1287,49 +1287,8 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker)
     return 0;
 }
 
-int market_put_market_order(bool real, bool trigger, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *taker_fee, const char *source)
+static int put_market_order(bool real, bool trigger, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *taker_fee, const char *source)
 {
-    if (side == MARKET_ORDER_SIDE_ASK) {
-        mpd_t *balance = balance_get(user_id, BALANCE_TYPE_AVAILABLE, m->stock);
-        if (!balance || mpd_cmp(balance, amount, &mpd_ctx) < 0) {
-            return -1;
-        }
-
-        skiplist_iter *iter = skiplist_get_iterator(m->bids);
-        skiplist_node *node = skiplist_next(iter);
-        if (node == NULL) {
-            skiplist_release_iterator(iter);
-            return -3;
-        }
-        skiplist_release_iterator(iter);
-
-        if (mpd_cmp(amount, m->min_amount, &mpd_ctx) < 0) {
-            return -2;
-        }
-    } else {
-        mpd_t *balance = balance_get(user_id, BALANCE_TYPE_AVAILABLE, m->money);
-        if (!balance || mpd_cmp(balance, amount, &mpd_ctx) < 0) {
-            return -1;
-        }
-
-        skiplist_iter *iter = skiplist_get_iterator(m->asks);
-        skiplist_node *node = skiplist_next(iter);
-        if (node == NULL) {
-            skiplist_release_iterator(iter);
-            return -3;
-        }
-        skiplist_release_iterator(iter);
-
-        order_t *order = node->value;
-        mpd_t *require = mpd_new(&mpd_ctx);
-        mpd_mul(require, order->price, m->min_amount, &mpd_ctx);
-        if (mpd_cmp(amount, require, &mpd_ctx) < 0) {
-            mpd_del(require);
-            return -2;
-        }
-        mpd_del(require);
-    }
-
     order_t *order = malloc(sizeof(order_t));
     if (order == NULL) {
         return -__LINE__;
@@ -1405,6 +1364,52 @@ int market_put_market_order(bool real, bool trigger, json_t **result, market_t *
 
     order_free(order);
     return 0;
+}
+
+int market_put_market_order(bool real, bool trigger, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *taker_fee, const char *source)
+{
+    if (side == MARKET_ORDER_SIDE_ASK) {
+        mpd_t *balance = balance_get(user_id, BALANCE_TYPE_AVAILABLE, m->stock);
+        if (!balance || mpd_cmp(balance, amount, &mpd_ctx) < 0) {
+            return -1;
+        }
+
+        skiplist_iter *iter = skiplist_get_iterator(m->bids);
+        skiplist_node *node = skiplist_next(iter);
+        if (node == NULL) {
+            skiplist_release_iterator(iter);
+            return -3;
+        }
+        skiplist_release_iterator(iter);
+
+        if (mpd_cmp(amount, m->min_amount, &mpd_ctx) < 0) {
+            return -2;
+        }
+    } else {
+        mpd_t *balance = balance_get(user_id, BALANCE_TYPE_AVAILABLE, m->money);
+        if (!balance || mpd_cmp(balance, amount, &mpd_ctx) < 0) {
+            return -1;
+        }
+
+        skiplist_iter *iter = skiplist_get_iterator(m->asks);
+        skiplist_node *node = skiplist_next(iter);
+        if (node == NULL) {
+            skiplist_release_iterator(iter);
+            return -3;
+        }
+        skiplist_release_iterator(iter);
+
+        order_t *order = node->value;
+        mpd_t *require = mpd_new(&mpd_ctx);
+        mpd_mul(require, order->price, m->min_amount, &mpd_ctx);
+        if (mpd_cmp(amount, require, &mpd_ctx) < 0) {
+            mpd_del(require);
+            return -2;
+        }
+        mpd_del(require);
+    }
+
+    return put_market_order(real, trigger, result, m, user_id, side, amount, taker_fee, source);
 }
 
 int market_cancel_order(bool real, json_t **result, market_t *m, order_t *order)
