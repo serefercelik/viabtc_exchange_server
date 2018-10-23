@@ -730,7 +730,7 @@ int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t
         if (!balance || mpd_cmp(balance, amount, &mpd_ctx) < 0) {
             return -1;
         }
-        
+
         skiplist_iter *iter = skiplist_get_iterator(m->asks);
         skiplist_node *node = skiplist_next(iter);
         if (node == NULL) {
@@ -748,12 +748,12 @@ int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t
         }
         mpd_del(require);
     }
-    
+
     order_t *order = malloc(sizeof(order_t));
     if (order == NULL) {
         return -__LINE__;
     }
-    
+
     order->id           = ++order_id_start;
     order->type         = MARKET_ORDER_TYPE_STOP_LOSS;
     order->side         = side;
@@ -772,7 +772,7 @@ int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t
     order->deal_stock   = mpd_new(&mpd_ctx);
     order->deal_money   = mpd_new(&mpd_ctx);
     order->deal_fee     = mpd_new(&mpd_ctx);
-    
+
     mpd_copy(order->trigger, trigger, &mpd_ctx);
     mpd_copy(order->price, mpd_zero, &mpd_ctx);
     mpd_copy(order->amount, amount, &mpd_ctx);
@@ -783,7 +783,7 @@ int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t
     mpd_copy(order->deal_stock, mpd_zero, &mpd_ctx);
     mpd_copy(order->deal_money, mpd_zero, &mpd_ctx);
     mpd_copy(order->deal_fee, mpd_zero, &mpd_ctx);
-    
+
     if (real) {
         push_order_message(ORDER_EVENT_PUT, order, m);
         *result = get_order_info(order);
@@ -792,7 +792,7 @@ int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t
     if (ret < 0) {
         log_fatal("order_put fail: %d, order: %"PRIu64"", ret, order->id);
     }
-    
+
     return 0;
 }
 
@@ -811,7 +811,7 @@ int market_put_stop_limit_order(bool real, json_t **result, market_t *m, uint32_
         if (!balance || mpd_cmp(balance, amount, &mpd_ctx) < 0) {
             return -1;
         }
-        
+
         skiplist_iter *iter = skiplist_get_iterator(m->asks);
         skiplist_node *node = skiplist_next(iter);
         if (node == NULL) {
@@ -829,12 +829,12 @@ int market_put_stop_limit_order(bool real, json_t **result, market_t *m, uint32_
         }
         mpd_del(require);
     }
-    
+
     order_t *order = malloc(sizeof(order_t));
     if (order == NULL) {
         return -__LINE__;
     }
-    
+
     order->id           = ++order_id_start;
     order->type         = MARKET_ORDER_TYPE_STOP_LIMIT;
     order->side         = side;
@@ -853,7 +853,7 @@ int market_put_stop_limit_order(bool real, json_t **result, market_t *m, uint32_
     order->deal_stock   = mpd_new(&mpd_ctx);
     order->deal_money   = mpd_new(&mpd_ctx);
     order->deal_fee     = mpd_new(&mpd_ctx);
-    
+
     mpd_copy(order->trigger, trigger, &mpd_ctx);
     mpd_copy(order->price, price, &mpd_ctx);
     mpd_copy(order->amount, amount, &mpd_ctx);
@@ -864,7 +864,7 @@ int market_put_stop_limit_order(bool real, json_t **result, market_t *m, uint32_
     mpd_copy(order->deal_stock, mpd_zero, &mpd_ctx);
     mpd_copy(order->deal_money, mpd_zero, &mpd_ctx);
     mpd_copy(order->deal_fee, mpd_zero, &mpd_ctx);
-    
+
     if (real) {
         push_order_message(ORDER_EVENT_PUT, order, m);
         *result = get_order_info(order);
@@ -873,7 +873,7 @@ int market_put_stop_limit_order(bool real, json_t **result, market_t *m, uint32_
     if (ret < 0) {
         log_fatal("order_put fail: %d, order: %"PRIu64"", ret, order->id);
     }
-    
+
     return 0;
 }
 
