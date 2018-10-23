@@ -473,6 +473,7 @@ static int on_cmd_order_put_stop_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params
     mpd_t *amount       = NULL;
     mpd_t *price        = NULL;
     mpd_t *taker_fee    = NULL;
+    mpd_t *maker_fee    = NULL;
     
     // trigger
     if (!json_is_string(json_array_get(params, 3)))
@@ -502,10 +503,18 @@ static int on_cmd_order_put_stop_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params
     if (taker_fee == NULL || mpd_cmp(taker_fee, mpd_zero, &mpd_ctx) < 0 || mpd_cmp(taker_fee, mpd_one, &mpd_ctx) >= 0)
         goto invalid_argument;
     
+    // maker fee
+    if (!json_is_string(json_array_get(params, 7)))
+        goto invalid_argument;
+    maker_fee = decimal(json_string_value(json_array_get(params, 7)), market->fee_prec);
+    if (maker_fee == NULL || mpd_cmp(maker_fee, mpd_zero, &mpd_ctx) < 0 || mpd_cmp(maker_fee, mpd_one, &mpd_ctx) >= 0)
+        goto invalid_argument;
+    
     mpd_del(trigger);
     mpd_del(amount);
     mpd_del(price);
     mpd_del(taker_fee);
+    mpd_del(maker_fee);
     
     return reply_error(ses, pkg, -101, "put stop limit not implemented");
 
@@ -518,6 +527,8 @@ invalid_argument:
         mpd_del(price);
     if (taker_fee)
         mpd_del(taker_fee);
+    if (maker_fee)
+        mpd_del(maker_fee);
     
     return reply_error(ses, pkg, -101, "put stop limit not implemented");
 }
