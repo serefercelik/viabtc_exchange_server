@@ -488,7 +488,7 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     json_decref(result);
     
     // Finish if price unchanged
-    if (m->last_price->len == 0 || mpd_cmp(m->last_price, price, &mpd_ctx) == 0) {
+    if (mpd_cmp(m->last_price, price, &mpd_ctx) == 0) {
         return ret;
     }
     
@@ -540,7 +540,7 @@ static int trigger_buy_stop_orders(market_t *m, mpd_t *price)
     json_decref(result);
     
     // Finish if price unchanged
-    if (m->last_price->len == 0 || mpd_cmp(m->last_price, price, &mpd_ctx) == 0) {
+    if (mpd_cmp(m->last_price, price, &mpd_ctx) == 0) {
         return ret;
     }
     
