@@ -1264,13 +1264,22 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker, mpd_
         }
     }
     skiplist_release_iterator(iter);
+    
+    if (price->len > 0) {
+        mpd_del(m->last_price);
+        m->last_price = price;
+        if (last_price) {
+            mpd_t *output_price = mpd_new(&mpd_ctx);
+            mpd_copy(output_price, price, &mpd_ctx);
+            *last_price = output_price;
+        }
+    } else {
+        if (last_price) {
+            *last_price = price;
+        }
+    }
 
     mpd_del(amount);
-    if (last_price) {
-        *last_price = price;
-    } else {
-        mpd_del(price);
-    }
     mpd_del(deal);
     mpd_del(ask_fee);
     mpd_del(bid_fee);
