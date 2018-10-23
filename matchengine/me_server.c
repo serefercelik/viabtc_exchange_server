@@ -471,6 +471,7 @@ static int on_cmd_order_put_stop_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params
     
     mpd_t *trigger      = NULL;
     mpd_t *amount       = NULL;
+    mpd_t *price        = NULL;
     
     // trigger
     if (!json_is_string(json_array_get(params, 3)))
@@ -486,8 +487,16 @@ static int on_cmd_order_put_stop_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params
     if (amount == NULL || mpd_cmp(amount, mpd_zero, &mpd_ctx) <= 0)
         goto invalid_argument;
     
+    // price
+    if (!json_is_string(json_array_get(params, 5)))
+        goto invalid_argument;
+    price = decimal(json_string_value(json_array_get(params, 5)), market->money_prec);
+    if (price == NULL || mpd_cmp(price, mpd_zero, &mpd_ctx) <= 0)
+        goto invalid_argument;
+    
     mpd_del(trigger);
     mpd_del(amount);
+    mpd_del(price);
     
     return reply_error(ses, pkg, -101, "put stop limit not implemented");
 
@@ -496,6 +505,8 @@ invalid_argument:
         mpd_del(trigger);
     if (amount)
         mpd_del(amount);
+    if (price)
+        mpd_del(price);
     
     return reply_error(ses, pkg, -101, "put stop limit not implemented");
 }
