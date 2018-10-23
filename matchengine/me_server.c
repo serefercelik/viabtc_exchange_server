@@ -444,6 +444,11 @@ invalid_argument:
     return reply_error_invalid_argument(ses, pkg);
 }
 
+static int on_cmd_order_put_stop_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params)
+{
+    return reply_error(ses, pkg, -101, "put stop limit not implemented");
+}
+
 static int on_cmd_order_put_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params)
 {
     if (json_array_size(params) != 8)
@@ -1153,7 +1158,17 @@ static void svr_on_recv_pkg(nw_ses *ses, rpc_pkg *pkg)
         }
         break;
     case CMD_ORDER_PUT_STOP_LIMIT:
-        reply_error(ses, pkg, -100, "put stop limit not implemented");
+        if (is_operlog_block() || is_history_block() || is_message_block()) {
+            log_fatal("service unavailable, operlog: %d, history: %d, message: %d",
+                    is_operlog_block(), is_history_block(), is_message_block());
+            reply_error_service_unavailable(ses, pkg);
+            goto cleanup;
+        }
+        log_trace("from: %s cmd order put stop limit, sequence: %u, params: %s", nw_sock_human_addr(&ses->peer_addr), pkg->sequence, params_str);
+        ret = on_cmd_order_put_stop_limit(ses, pkg, params);
+        if (ret < 0) {
+            log_error("on_cmd_order_put_stop_limit %s fail: %d", params_str, ret);
+        }
         break;
     case CMD_ORDER_PUT_LIMIT:
         if (is_operlog_block() || is_history_block() || is_message_block()) {
