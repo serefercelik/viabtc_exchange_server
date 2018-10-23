@@ -454,7 +454,6 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     skiplist_t *triggered = skiplist_create(&lt);
     skiplist_node *node;
     skiplist_iter *iter = skiplist_get_iterator(m->stop_asks);
-    int ret = 0;
     while ((node = skiplist_next(iter)) != NULL) {
         order_t *order = node->value;
         if (mpd_cmp(order->trigger, price, &mpd_ctx) < 0) {
@@ -463,12 +462,13 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
         skiplist_insert(triggered, order);
     }
     skiplist_release_iterator(iter);
-    if (ret < 0 || triggered->len == 0) {
+    if (triggered->len == 0) {
         skiplist_release(triggered);
-        return ret;
+        return 0;
     }
     
     // Convert triggered orders
+    int ret = 0;
     iter = skiplist_get_iterator(triggered);
     json_t *result = json_object();
     while ((node = skiplist_next(iter)) != NULL) {
@@ -506,7 +506,6 @@ static int trigger_buy_stop_orders(market_t *m, mpd_t *price)
     skiplist_t *triggered = skiplist_create(&lt);
     skiplist_node *node;
     skiplist_iter *iter = skiplist_get_iterator(m->stop_bids);
-    int ret = 0;
     while ((node = skiplist_next(iter)) != NULL) {
         order_t *order = node->value;
         if (mpd_cmp(order->trigger, price, &mpd_ctx) > 0) {
@@ -515,12 +514,13 @@ static int trigger_buy_stop_orders(market_t *m, mpd_t *price)
         skiplist_insert(triggered, order);
     }
     skiplist_release_iterator(iter);
-    if (ret < 0 || triggered->len == 0) {
+    if (triggered->len == 0) {
         skiplist_release(triggered);
-        return ret;
+        return 0;
     }
     
     // Convert triggered orders
+    int ret = 0;
     iter = skiplist_get_iterator(triggered);
     json_t *result = json_object();
     while ((node = skiplist_next(iter)) != NULL) {
