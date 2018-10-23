@@ -877,7 +877,7 @@ int market_put_stop_limit_order(bool real, json_t **result, market_t *m, uint32_
     return 0;
 }
 
-int market_put_limit_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *price, mpd_t *taker_fee, mpd_t *maker_fee, const char *source)
+int market_put_limit_order(bool real, bool trigger, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *price, mpd_t *taker_fee, mpd_t *maker_fee, const char *source)
 {
     if (side == MARKET_ORDER_SIDE_ASK) {
         mpd_t *balance = balance_get(user_id, BALANCE_TYPE_AVAILABLE, m->stock);
@@ -938,7 +938,7 @@ int market_put_limit_order(bool real, json_t **result, market_t *m, uint32_t use
     mpd_t *last_price = mpd_new(&mpd_ctx);
     if (side == MARKET_ORDER_SIDE_ASK) {
         ret = execute_limit_ask_order(real, m, order, &last_price);
-        if (real && last_price->len > 0) {
+        if (real && trigger && last_price->len > 0) {
             ret = trigger_sell_stop_orders(m, last_price);
             if (ret < 0) {
                 log_error("trigger sell stop orders fail: %d, order: %"PRIu64"", ret, order->id);
@@ -949,7 +949,7 @@ int market_put_limit_order(bool real, json_t **result, market_t *m, uint32_t use
         }
     } else {
         ret = execute_limit_bid_order(real, m, order, &last_price);
-        if (real && last_price->len > 0) {
+        if (real && trigger && last_price->len > 0) {
             ret = trigger_buy_stop_orders(m, last_price);
             if (ret < 0) {
                 log_error("trigger buy stop orders fail: %d, order %"PRIu64"", ret, order->id);
