@@ -790,6 +790,9 @@ static int execute_limit_bid_order(bool real, market_t *m, order_t *taker, mpd_t
 int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *trigger, mpd_t *amount, mpd_t *taker_fee, const char *source)
 {
     if (side == MARKET_ORDER_SIDE_ASK) {
+        if (m->last_price->len == 0 || mpd_cmp(trigger, m->last_price, &mpd_ctx) >= 0) {
+            return -101;
+        }
         mpd_t *balance = balance_get(user_id, BALANCE_TYPE_AVAILABLE, m->stock);
         if (!balance || mpd_cmp(balance, amount, &mpd_ctx) < 0) {
             return -1;
@@ -798,6 +801,9 @@ int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t
             return -2;
         }
     } else {
+        if (m->last_price->len == 0 || mpd_cmp(trigger, m->last_price, &mpd_ctx) <= 0) {
+            return -101;
+        }
         mpd_t *balance = balance_get(user_id, BALANCE_TYPE_AVAILABLE, m->money);
         if (!balance || mpd_cmp(balance, amount, &mpd_ctx) < 0) {
             return -1;
