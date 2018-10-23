@@ -1372,7 +1372,6 @@ int market_put_market_order(bool real, bool trigger, json_t **result, market_t *
 
     dlog_flush_all();
     int ret;
-    mpd_t *last_price = mpd_new(&mpd_ctx);
     if (side == MARKET_ORDER_SIDE_ASK) {
         ret = execute_market_ask_order(real, m, order);
         if (real && trigger) {
@@ -1380,7 +1379,6 @@ int market_put_market_order(bool real, bool trigger, json_t **result, market_t *
             if (ret < 0) {
                 log_error("trigger sell stop orders fail: %d, order: %"PRIu64"", ret, order->id);
                 order_free(order);
-                mpd_del(last_price);
                 return -__LINE__;
             }
         }
@@ -1391,7 +1389,6 @@ int market_put_market_order(bool real, bool trigger, json_t **result, market_t *
             if (ret < 0) {
                 log_error("trigger buy stop orders fail: %d, order: %"PRIu64"", ret, order->id);
                 order_free(order);
-                mpd_del(last_price);
                 return -__LINE__;
             }
         }
@@ -1399,7 +1396,6 @@ int market_put_market_order(bool real, bool trigger, json_t **result, market_t *
     if (ret < 0) {
         log_error("execute order: %"PRIu64" fail: %d", order->id, ret);
         order_free(order);
-        mpd_del(last_price);
         return -__LINE__;
     }
 
@@ -1413,7 +1409,6 @@ int market_put_market_order(bool real, bool trigger, json_t **result, market_t *
     }
 
     order_free(order);
-    mpd_del(last_price);
     return 0;
 }
 
