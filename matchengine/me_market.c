@@ -491,11 +491,15 @@ static int trigger_sell_stop_orders(market_t *m)
     skiplist_release_iterator(iter);
     skiplist_release(triggered);
     json_decref(result);
+    if (ret < 0) {
+        mpd_del(triggered_price);
+        return ret;
+    }
     
     // Finish if price unchanged
     if (mpd_cmp(m->last_price, triggered_price, &mpd_ctx) == 0) {
         mpd_del(triggered_price);
-        return ret;
+        return 0;
     }
     
     // Trigger again if price changed
@@ -549,11 +553,15 @@ static int trigger_buy_stop_orders(market_t *m)
     skiplist_release_iterator(iter);
     skiplist_release(triggered);
     json_decref(result);
+    if (ret < 0) {
+        mpd_del(triggered_price);
+        return ret;
+    }
     
     // Finish if price unchanged
     if (mpd_cmp(m->last_price, triggered_price, &mpd_ctx) == 0) {
         mpd_del(triggered_price);
-        return ret;
+        return 0;
     }
     
     // Trigger again if price unchanged
