@@ -445,9 +445,12 @@ static int append_balance_trade_fee(order_t *order, const char *asset, mpd_t *ch
     return ret;
 }
 
-static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
+static int trigger_sell_stop_orders(market_t *m)
 {
     // Find triggered orders
+    if (m->last_price->len == 0) {
+        return 0;
+    }
     skiplist_type lt;
     memset(&lt, 0, sizeof(lt));
     lt.compare = order_match_compare;
@@ -456,7 +459,7 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     skiplist_iter *iter = skiplist_get_iterator(m->stop_asks);
     while ((node = skiplist_next(iter)) != NULL) {
         order_t *order = node->value;
-        if (mpd_cmp(order->trigger, price, &mpd_ctx) < 0) {
+        if (mpd_cmp(order->trigger, m->last_price, &mpd_ctx) < 0) {
             continue;
         }
         skiplist_insert(triggered, order);
@@ -469,6 +472,8 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     
     // Convert triggered orders
     int ret = 0;
+    mpd_t *triggered_price = mpd_new(&mpd_ctx);
+    mpd_copy(triggered_price, m->last_price, &mpd_ctx);
     iter = skiplist_get_iterator(triggered);
     json_t *result = json_object();
     while ((node = skiplist_next(iter)) != NULL) {
@@ -488,13 +493,14 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     json_decref(result);
     
     // Finish if price unchanged
-    if (mpd_cmp(m->last_price, price, &mpd_ctx) == 0) {
+    if (mpd_cmp(m->last_price, triggered_price, &mpd_ctx) == 0) {
+        mpd_del(triggered_price);
         return ret;
     }
     
     // Trigger again if price changed
-    mpd_copy(price, m->last_price, &mpd_ctx);
-    return trigger_sell_stop_orders(m, price);
+    mpd_del(triggered_price);
+    return trigger_sell_stop_orders(m);
 }
 
 static int trigger_buy_stop_orders(market_t *m, mpd_t *price)
@@ -998,9 +1004,8 @@ int market_put_limit_order(bool real, bool trigger, json_t **result, market_t *m
     mpd_t *last_price = mpd_new(&mpd_ctx);
     if (side == MARKET_ORDER_SIDE_ASK) {
         ret = execute_limit_ask_order(real, m, order);
-        if (real && trigger && m->last_price->len > 0) {
-            mpd_copy(last_price, m->last_price, &mpd_ctx);
-            ret = trigger_sell_stop_orders(m, last_price);
+        if (real && trigger) {
+            ret = trigger_sell_stop_orders(m);
             if (ret < 0) {
                 log_error("trigger sell stop orders fail: %d, order: %"PRIu64"", ret, order->id);
                 order_free(order);
@@ -1357,9 +1362,8 @@ int market_put_market_order(bool real, bool trigger, json_t **result, market_t *
     mpd_t *last_price = mpd_new(&mpd_ctx);
     if (side == MARKET_ORDER_SIDE_ASK) {
         ret = execute_market_ask_order(real, m, order);
-        if (real && trigger && m->last_price->len > 0) {
-            mpd_copy(last_price, m->last_price, &mpd_ctx);
-            ret = trigger_sell_stop_orders(m, last_price);
+        if (real && trigger) {
+            ret = trigger_sell_stop_orders(m);
             if (ret < 0) {
                 log_error("trigger sell stop orders fail: %d, order: %"PRIu64"", ret, order->id);
                 order_free(order);
