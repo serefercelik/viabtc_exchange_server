@@ -461,7 +461,7 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     json_decref(result);
     
     // Finish if price unchanged
-    if (mpd_cmp(new_price, price, &mpd_ctx) == 0) {
+    if (new_price->len == 0 || mpd_cmp(new_price, price, &mpd_ctx) == 0) {
         mpd_del(new_price);
         return ret;
     }
@@ -501,7 +501,7 @@ static int trigger_buy_stop_orders(market_t *m, mpd_t *price)
     mpd_t *new_price = mpd_new(&mpd_ctx);
     while ((node = skiplist_next(iter)) != NULL) {
         order_t *order = node->value;
-        if (order->type == MARKET_ORDER_TYPE_STOP_LIMIT) {
+        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
             ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->taker_fee, order->source, &new_price);
         } else {
             ret = market_put_limit_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->price, order->taker_fee, order->maker_fee, order->source, &new_price);
@@ -516,7 +516,7 @@ static int trigger_buy_stop_orders(market_t *m, mpd_t *price)
     json_decref(result);
     
     // Finish if price unchanged
-    if (mpd_cmp(new_price, price, &mpd_ctx) == 0) {
+    if (new_price->len == 0 || mpd_cmp(new_price, price, &mpd_ctx) == 0) {
         mpd_del(new_price);
         return ret;
     }
