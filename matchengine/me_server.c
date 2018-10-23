@@ -446,6 +446,9 @@ invalid_argument:
 
 static int on_cmd_order_put_stop_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params)
 {
+    if (json_array_size(params) != 9)
+        return reply_error_invalid_argument(ses, pkg);
+    
     return reply_error(ses, pkg, -101, "put stop limit not implemented");
 }
 
