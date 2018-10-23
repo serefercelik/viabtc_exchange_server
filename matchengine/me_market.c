@@ -389,6 +389,8 @@ market_t *market_create(struct market *conf)
     m->stop_bids = skiplist_create(&lt_stop);
     if (m->asks == NULL || m->bids == NULL || m->stop_asks == NULL || m->stop_bids == NULL)
         return NULL;
+    
+    m->last_price = mpd_new(&mpd_ctx);
 
     return m;
 }

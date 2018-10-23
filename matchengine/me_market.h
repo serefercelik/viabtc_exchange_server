@@ -49,6 +49,8 @@ typedef struct market_t {
     skiplist_t      *bids;
     skiplist_t      *stop_asks;
     skiplist_t      *stop_bids;
+    
+    mpd_t           *last_price;
 } market_t;
 
 market_t *market_create(struct market *conf);
