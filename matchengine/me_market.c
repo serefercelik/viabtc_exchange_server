@@ -501,7 +501,11 @@ static int trigger_buy_stop_orders(market_t *m, mpd_t *price)
     mpd_t *new_price = mpd_new(&mpd_ctx);
     while ((node = skiplist_next(iter)) != NULL) {
         order_t *order = node->value;
-        ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->taker_fee, order->source, &new_price);
+        if (order->type == MARKET_ORDER_TYPE_STOP_LIMIT) {
+            ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->taker_fee, order->source, &new_price);
+        } else {
+            ret = market_put_limit_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->price, order->taker_fee, order->maker_fee, order->source, &new_price);
+        }
         order_finish(true, m, order);
         if (ret < 0) {
             break;
