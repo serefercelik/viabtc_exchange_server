@@ -549,7 +549,7 @@ static int trigger_buy_stop_orders(market_t *m, mpd_t *price)
     return trigger_buy_stop_orders(m, price);
 }
 
-static int execute_limit_ask_order(bool real, market_t *m, order_t *taker, mpd_t **last_price)
+static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
 {
     mpd_t *price    = mpd_new(&mpd_ctx);
     mpd_t *amount   = mpd_new(&mpd_ctx);
@@ -645,15 +645,6 @@ static int execute_limit_ask_order(bool real, market_t *m, order_t *taker, mpd_t
     if (price->len > 0) {
         mpd_del(m->last_price);
         m->last_price = price;
-        if (last_price) {
-            mpd_t *output_price = mpd_new(&mpd_ctx);
-            mpd_copy(output_price, price, &mpd_ctx);
-            *last_price = output_price;
-        }
-    } else {
-        if (last_price) {
-            *last_price = price;
-        }
     }
 
     mpd_del(amount);
@@ -1015,8 +1006,9 @@ int market_put_limit_order(bool real, bool trigger, json_t **result, market_t *m
     int ret;
     mpd_t *last_price = mpd_new(&mpd_ctx);
     if (side == MARKET_ORDER_SIDE_ASK) {
-        ret = execute_limit_ask_order(real, m, order, &last_price);
-        if (real && trigger && last_price->len > 0) {
+        ret = execute_limit_ask_order(real, m, order);
+        if (real && trigger && m->last_price->len > 0) {
+            mpd_copy(last_price, m->last_price, &mpd_ctx);
             ret = trigger_sell_stop_orders(m, last_price);
             if (ret < 0) {
                 log_error("trigger sell stop orders fail: %d, order: %"PRIu64"", ret, order->id);
