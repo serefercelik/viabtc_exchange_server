@@ -105,6 +105,28 @@ static int order_match_compare(const void *value1, const void *value2)
     return order1->id > order2->id ? 1 : -1;
 }
 
+static int order_trigger_compare(const void *value1, const void *value2)
+{
+    const order_t *order1 = value1;
+    const order_t *order2 = value2;
+    
+    if (order1->id == order2->id) {
+        return 0;
+    }
+    
+    int cmp;
+    if (order1->side == MARKET_ORDER_SIDE_ASK) {
+        cmp = mpd_cmp(order1->trigger, order2->trigger, &mpd_ctx);
+    } else {
+        cmp = mpd_cmp(order2->trigger, order1->trigger, &mpd_ctx);
+    }
+    if (cmp != 0) {
+        return cmp;
+    }
+    
+    return order1->id > order2->id ? 1 : -1;
+}
+
 static int order_id_compare(const void *value1, const void *value2)
 {
     const order_t *order1 = value1;
@@ -353,14 +375,18 @@ market_t *market_create(struct market *conf)
     if (m->orders == NULL)
         return NULL;
 
-    skiplist_type lt;
-    memset(&lt, 0, sizeof(lt));
-    lt.compare          = order_match_compare;
+    skiplist_type lt_standard;
+    memset(&lt_standard, 0, sizeof(lt_standard));
+    lt_standard.compare          = order_match_compare;
+    
+    skiplist_type lt_stop;
+    memset(&lt_stop, 0, sizeof(lt_stop));
+    lt_stop.compare              = order_trigger_compare;
 
-    m->asks = skiplist_create(&lt);
-    m->bids = skiplist_create(&lt);
-    m->stop_asks = skiplist_create(&lt);
-    m->stop_bids = skiplist_create(&lt);
+    m->asks = skiplist_create(&lt_standard);
+    m->bids = skiplist_create(&lt_standard);
+    m->stop_asks = skiplist_create(&lt_stop);
+    m->stop_bids = skiplist_create(&lt_stop);
     if (m->asks == NULL || m->bids == NULL || m->stop_asks == NULL || m->stop_bids == NULL)
         return NULL;
 
