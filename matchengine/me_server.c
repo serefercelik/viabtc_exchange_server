@@ -517,13 +517,28 @@ static int on_cmd_order_put_stop_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params
     if (strlen(source) >= SOURCE_MAX_LEN)
         goto invalid_argument;
     
+    json_t *result = NULL;
+    int ret = market_put_stop_limit_order(true, &result, market, user_id, side, trigger, amount, price, taker_fee, maker_fee, source);
+    
     mpd_del(trigger);
     mpd_del(amount);
     mpd_del(price);
     mpd_del(taker_fee);
     mpd_del(maker_fee);
     
-    return reply_error(ses, pkg, -101, "put stop limit not implemented");
+    if (ret == -1) {
+        return reply_error(ses, pkg, 10, "balance not enough");
+    } else if (ret == -2) {
+        return reply_error(ses, pkg, 11, "amount too small");
+    } else if (ret < 0) {
+        log_fatal("market_put_stop_limit_order fail: %d", ret);
+        return reply_error_internal_error(ses, pkg);
+    }
+    
+    append_operlog("stop_limit_order", params);
+    ret = reply_result(ses, pkg, result);
+    json_decref(result);
+    return ret;
 
 invalid_argument:
     if (trigger)
@@ -537,7 +552,7 @@ invalid_argument:
     if (maker_fee)
         mpd_del(maker_fee);
     
-    return reply_error(ses, pkg, -101, "put stop limit not implemented");
+    return reply_error_invalid_argument(ses, pkg);
 }
 
 static int on_cmd_order_put_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params)
