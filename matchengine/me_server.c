@@ -469,6 +469,23 @@ static int on_cmd_order_put_stop_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params
     if (side != MARKET_ORDER_SIDE_ASK && side != MARKET_ORDER_SIDE_BID)
         return reply_error_invalid_argument(ses, pkg);
     
+    mpd_t *trigger      = NULL;
+    
+    // trigger
+    if (!json_is_string(json_array_get(params, 3)))
+        goto invalid_argument;
+    trigger = decimal(json_string_value(json_array_get(params, 3)), market->money_prec);
+    if (trigger == NULL || mpd_cmp(trigger, mpd_zero, &mpd_ctx) <= 0)
+        goto invalid_argument;
+    
+    mpd_del(trigger);
+    
+    return reply_error(ses, pkg, -101, "put stop limit not implemented");
+
+invalid_argument:
+    if (trigger)
+        mpd_del(trigger);
+    
     return reply_error(ses, pkg, -101, "put stop limit not implemented");
 }
 
