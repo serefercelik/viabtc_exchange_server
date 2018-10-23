@@ -471,13 +471,12 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     // Convert triggered orders
     iter = skiplist_get_iterator(triggered);
     json_t *result = json_object();
-    mpd_t *new_price = mpd_new(&mpd_ctx);
     while ((node = skiplist_next(iter)) != NULL) {
         order_t *order = node->value;
         if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
-            ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->taker_fee, order->source, &new_price);
+            ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->taker_fee, order->source, NULL);
         } else {
-            ret = market_put_limit_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->price, order->taker_fee, order->maker_fee, order->source, &new_price);
+            ret = market_put_limit_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->price, order->taker_fee, order->maker_fee, order->source, NULL);
         }
         order_finish(true, m, order);
         if (ret < 0) {
@@ -489,14 +488,12 @@ static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
     json_decref(result);
     
     // Finish if price unchanged
-    if (new_price->len == 0 || mpd_cmp(new_price, price, &mpd_ctx) == 0) {
-        mpd_del(new_price);
+    if (m->last_price->len == 0 || mpd_cmp(m->last_price, price, &mpd_ctx) == 0) {
         return ret;
     }
     
     // Trigger again if price changed
-    mpd_copy(price, new_price, &mpd_ctx);
-    mpd_del(new_price);
+    mpd_copy(price, m->last_price, &mpd_ctx);
     return trigger_sell_stop_orders(m, price);
 }
 
