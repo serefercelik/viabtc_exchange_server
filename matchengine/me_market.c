@@ -977,7 +977,7 @@ static int trigger_sell_stop_orders(market_t *m)
     while ((node = skiplist_next(iter)) != NULL) {
         order_t *order = node->value;
         if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
-            ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->taker_fee, order->source);
+            ret = put_market_order(true, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->taker_fee, order->source);
         } else {
             ret = market_put_limit_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->price, order->taker_fee, order->maker_fee, order->source);
         }
@@ -1039,7 +1039,7 @@ static int trigger_buy_stop_orders(market_t *m)
     while ((node = skiplist_next(iter)) != NULL) {
         order_t *order = node->value;
         if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
-            ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->taker_fee, order->source);
+            ret = put_market_order(true, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->taker_fee, order->source);
         } else {
             ret = market_put_limit_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->price, order->taker_fee, order->maker_fee, order->source);
         }
