@@ -880,10 +880,7 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker)
     return 0;
 }
 
-static int trigger_sell_stop_orders(market_t *m);
-static int trigger_buy_stop_orders(market_t *m);
-
-static int put_limit_order(bool real, bool trigger, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *price, mpd_t *taker_fee, mpd_t *maker_fee, const char *source)
+static int put_limit_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *price, mpd_t *taker_fee, mpd_t *maker_fee, const char *source)
 {
     order_t *order = malloc(sizeof(order_t));
     if (order == NULL) {
@@ -923,24 +920,8 @@ static int put_limit_order(bool real, bool trigger, json_t **result, market_t *m
     int ret;
     if (side == MARKET_ORDER_SIDE_ASK) {
         ret = execute_limit_ask_order(real, m, order);
-        if (real && trigger) {
-            ret = trigger_sell_stop_orders(m);
-            if (ret < 0) {
-                log_error("trigger sell stop orders fail: %d, order: %"PRIu64"", ret, order->id);
-                order_free(order);
-                return -__LINE__;
-            }
-        }
     } else {
         ret = execute_limit_bid_order(real, m, order);
-        if (real && trigger) {
-            ret = trigger_buy_stop_orders(m);
-            if (ret < 0) {
-                log_error("trigger buy stop orders fail: %d, order %"PRIu64"", ret, order->id);
-                order_free(order);
-                return -__LINE__;
-            }
-        }
     }
     if (ret < 0) {
         log_error("execute order: %"PRIu64" fail: %d", order->id, ret);
@@ -1355,7 +1336,24 @@ int market_put_limit_order(bool real, bool trigger, json_t **result, market_t *m
         return -2;
     }
 
-    return put_limit_order(real, trigger, result, m, user_id, side, amount, price, taker_fee, maker_fee, source);
+    int ret = put_limit_order(real, result, m, user_id, side, amount, price, taker_fee, maker_fee, source);
+    if (ret < 0) {
+        return ret;
+    }
+    
+    if (real && trigger) {
+        if (side == MARKET_ORDER_SIDE_ASK) {
+            ret = trigger_sell_stop_orders(m);
+        } else {
+            ret = trigger_buy_stop_orders(m);
+        }
+        if (ret < 0) {
+            log_error("trigger stop orders fail: %d", ret);
+            return -__LINE__;
+        }
+    }
+    
+    return 0;
 }
 
 int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *taker_fee, const char *source)
