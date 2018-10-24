@@ -709,7 +709,7 @@ static int on_cmd_order_put_market(nw_ses *ses, rpc_pkg *pkg, json_t *params)
         goto invalid_argument;
 
     json_t *result = NULL;
-    int ret = market_put_market_order(true, true, &result, market, user_id, side, amount, taker_fee, source);
+    int ret = market_put_market_order(true, &result, market, user_id, side, amount, taker_fee, source);
 
     mpd_del(amount);
     mpd_del(taker_fee);
