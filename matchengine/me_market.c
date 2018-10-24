@@ -1397,21 +1397,29 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
         mpd_del(require);
     }
 
+    mpd_t *initial_price = mpd_new(&mpd_ctx);
+    mpd_copy(initial_price, m->last_price, &mpd_ctx);
     int ret = put_market_order(real, result, m, user_id, side, amount, taker_fee, source);
     if (ret < 0) {
+        mpd_del(initial_price);
         return ret;
     }
 
-    if (side == MARKET_ORDER_SIDE_ASK) {
-        ret = trigger_sell_stop_orders(real, m);
-    } else {
-        ret = trigger_buy_stop_orders(real, m);
-    }
-    if (ret < 0) {
-        log_error("trigger stop orders fail: %d", ret);
-        return -__LINE__;
+    int change;
+    if (initial_price->len != 0 && (change = mpd_cmp(m->last_price, initial_price, &mpd_ctx)) != 0) {
+        if (side == MARKET_ORDER_SIDE_ASK && change < 0) {
+            ret = trigger_sell_stop_orders(real, m);
+        } else if (side == MARKET_ORDER_SIDE_BID && change > 0) {
+            ret = trigger_buy_stop_orders(real, m);
+        }
+        if (ret < 0) {
+            log_error("trigger stop orders fail: %d", ret);
+            mpd_del(initial_price);
+            return -__LINE__;
+        }
     }
 
+    mpd_del(initial_price);
     return 0;
 }
 
