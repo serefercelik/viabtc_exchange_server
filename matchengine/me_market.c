@@ -1314,7 +1314,7 @@ int market_put_stop_limit_order(bool real, json_t **result, market_t *m, uint32_
     return 0;
 }
 
-int market_put_limit_order(bool real, bool trigger, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *price, mpd_t *taker_fee, mpd_t *maker_fee, const char *source)
+int market_put_limit_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *price, mpd_t *taker_fee, mpd_t *maker_fee, const char *source)
 {
     if (side == MARKET_ORDER_SIDE_ASK) {
         mpd_t *balance = balance_get(user_id, BALANCE_TYPE_AVAILABLE, m->stock);
@@ -1341,7 +1341,7 @@ int market_put_limit_order(bool real, bool trigger, json_t **result, market_t *m
         return ret;
     }
     
-    if (real && trigger) {
+    if (real) {
         if (side == MARKET_ORDER_SIDE_ASK) {
             ret = trigger_sell_stop_orders(m);
         } else {

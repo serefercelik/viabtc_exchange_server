@@ -625,7 +625,7 @@ static int on_cmd_order_put_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params)
         goto invalid_argument;
 
     json_t *result = NULL;
-    int ret = market_put_limit_order(true, true, &result, market, user_id, side, amount, price, taker_fee, maker_fee, source);
+    int ret = market_put_limit_order(true, &result, market, user_id, side, amount, price, taker_fee, maker_fee, source);
 
     mpd_del(amount);
     mpd_del(price);
