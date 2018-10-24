@@ -1054,7 +1054,7 @@ static int trigger_sell_stop_orders(bool real, market_t *m)
         } else {
             ret = put_limit_order(real, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->price, order->taker_fee, order->maker_fee, order->source);
         }
-        order_finish(true, m, order);
+        order_finish(real, m, order);
         if (ret < 0) {
             break;
         }
@@ -1116,7 +1116,7 @@ static int trigger_buy_stop_orders(bool real, market_t *m)
         } else {
             ret = put_limit_order(real, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->price, order->taker_fee, order->maker_fee, order->source);
         }
-        order_finish(true, m, order);
+        order_finish(real, m, order);
         if (ret < 0) {
             break;
         }
