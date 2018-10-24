@@ -1287,7 +1287,7 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker)
     return 0;
 }
 
-static int put_market_order(bool real, bool trigger, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *taker_fee, const char *source)
+static int put_market_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *taker_fee, const char *source)
 {
     order_t *order = malloc(sizeof(order_t));
     if (order == NULL) {
@@ -1328,24 +1328,8 @@ static int put_market_order(bool real, bool trigger, json_t **result, market_t *
     int ret;
     if (side == MARKET_ORDER_SIDE_ASK) {
         ret = execute_market_ask_order(real, m, order);
-        if (real && trigger) {
-            ret = trigger_sell_stop_orders(m);
-            if (ret < 0) {
-                log_error("trigger sell stop orders fail: %d, order: %"PRIu64"", ret, order->id);
-                order_free(order);
-                return -__LINE__;
-            }
-        }
     } else {
         ret = execute_market_bid_order(real, m, order);
-        if (real && trigger) {
-            ret = trigger_buy_stop_orders(m);
-            if (ret < 0) {
-                log_error("trigger buy stop orders fail: %d, order: %"PRIu64"", ret, order->id);
-                order_free(order);
-                return -__LINE__;
-            }
-        }
     }
     if (ret < 0) {
         log_error("execute order: %"PRIu64" fail: %d", order->id, ret);
@@ -1409,7 +1393,24 @@ int market_put_market_order(bool real, bool trigger, json_t **result, market_t *
         mpd_del(require);
     }
 
-    return put_market_order(real, trigger, result, m, user_id, side, amount, taker_fee, source);
+    int ret = put_market_order(real, result, m, user_id, side, amount, taker_fee, source);
+    if (ret < 0) {
+        return ret;
+    }
+    
+    if (real && trigger) {
+        if (side == MARKET_ORDER_SIDE_ASK) {
+            ret = trigger_sell_stop_orders(m);
+        } else {
+            ret = trigger_buy_stop_orders(m);
+        }
+        if (ret < 0) {
+            log_error("trigger stop orders fail: %d", ret);
+            return -__LINE__;
+        }
+    }
+    
+    return 0;
 }
 
 int market_cancel_order(bool real, json_t **result, market_t *m, order_t *order)
