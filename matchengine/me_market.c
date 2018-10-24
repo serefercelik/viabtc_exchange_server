@@ -445,130 +445,6 @@ static int append_balance_trade_fee(order_t *order, const char *asset, mpd_t *ch
     return ret;
 }
 
-static int trigger_sell_stop_orders(market_t *m)
-{
-    // Find triggered orders
-    if (m->last_price->len == 0) {
-        return 0;
-    }
-    skiplist_type lt;
-    memset(&lt, 0, sizeof(lt));
-    lt.compare = order_match_compare;
-    skiplist_t *triggered = skiplist_create(&lt);
-    skiplist_node *node;
-    skiplist_iter *iter = skiplist_get_iterator(m->stop_asks);
-    while ((node = skiplist_next(iter)) != NULL) {
-        order_t *order = node->value;
-        if (mpd_cmp(order->trigger, m->last_price, &mpd_ctx) < 0) {
-            continue;
-        }
-        skiplist_insert(triggered, order);
-    }
-    skiplist_release_iterator(iter);
-    if (triggered->len == 0) {
-        skiplist_release(triggered);
-        return 0;
-    }
-    
-    // Convert triggered orders
-    int ret = 0;
-    mpd_t *triggered_price = mpd_new(&mpd_ctx);
-    mpd_copy(triggered_price, m->last_price, &mpd_ctx);
-    iter = skiplist_get_iterator(triggered);
-    json_t *result = json_object();
-    while ((node = skiplist_next(iter)) != NULL) {
-        order_t *order = node->value;
-        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
-            ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->taker_fee, order->source);
-        } else {
-            ret = market_put_limit_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->price, order->taker_fee, order->maker_fee, order->source);
-        }
-        order_finish(true, m, order);
-        if (ret < 0) {
-            break;
-        }
-    }
-    skiplist_release_iterator(iter);
-    skiplist_release(triggered);
-    json_decref(result);
-    if (ret < 0) {
-        mpd_del(triggered_price);
-        return ret;
-    }
-    
-    // Finish if price unchanged
-    if (mpd_cmp(m->last_price, triggered_price, &mpd_ctx) == 0) {
-        mpd_del(triggered_price);
-        return 0;
-    }
-    
-    // Trigger again if price changed
-    mpd_del(triggered_price);
-    return trigger_sell_stop_orders(m);
-}
-
-static int trigger_buy_stop_orders(market_t *m)
-{
-    // Find triggered orders
-    if (m->last_price->len == 0) {
-        return 0;
-    }
-    skiplist_type lt;
-    memset(&lt, 0, sizeof(lt));
-    lt.compare = order_match_compare;
-    skiplist_t *triggered = skiplist_create(&lt);
-    skiplist_node *node;
-    skiplist_iter *iter = skiplist_get_iterator(m->stop_bids);
-    while ((node = skiplist_next(iter)) != NULL) {
-        order_t *order = node->value;
-        if (mpd_cmp(order->trigger, m->last_price, &mpd_ctx) > 0) {
-            continue;
-        }
-        skiplist_insert(triggered, order);
-    }
-    skiplist_release_iterator(iter);
-    if (triggered->len == 0) {
-        skiplist_release(triggered);
-        return 0;
-    }
-    
-    // Convert triggered orders
-    int ret = 0;
-    mpd_t *triggered_price = mpd_new(&mpd_ctx);
-    mpd_copy(triggered_price, m->last_price, &mpd_ctx);
-    iter = skiplist_get_iterator(triggered);
-    json_t *result = json_object();
-    while ((node = skiplist_next(iter)) != NULL) {
-        order_t *order = node->value;
-        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
-            ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->taker_fee, order->source);
-        } else {
-            ret = market_put_limit_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->price, order->taker_fee, order->maker_fee, order->source);
-        }
-        order_finish(true, m, order);
-        if (ret < 0) {
-            break;
-        }
-    }
-    skiplist_release_iterator(iter);
-    skiplist_release(triggered);
-    json_decref(result);
-    if (ret < 0) {
-        mpd_del(triggered_price);
-        return ret;
-    }
-    
-    // Finish if price unchanged
-    if (mpd_cmp(m->last_price, triggered_price, &mpd_ctx) == 0) {
-        mpd_del(triggered_price);
-        return 0;
-    }
-    
-    // Trigger again if price unchanged
-    mpd_del(triggered_price);
-    return trigger_buy_stop_orders(m);
-}
-
 static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
 {
     mpd_t *price    = mpd_new(&mpd_ctx);
@@ -1065,6 +941,130 @@ static int put_market_order(bool real, json_t **result, market_t *m, uint32_t us
 
     order_free(order);
     return 0;
+}
+
+static int trigger_sell_stop_orders(market_t *m)
+{
+    // Find triggered orders
+    if (m->last_price->len == 0) {
+        return 0;
+    }
+    skiplist_type lt;
+    memset(&lt, 0, sizeof(lt));
+    lt.compare = order_match_compare;
+    skiplist_t *triggered = skiplist_create(&lt);
+    skiplist_node *node;
+    skiplist_iter *iter = skiplist_get_iterator(m->stop_asks);
+    while ((node = skiplist_next(iter)) != NULL) {
+        order_t *order = node->value;
+        if (mpd_cmp(order->trigger, m->last_price, &mpd_ctx) < 0) {
+            continue;
+        }
+        skiplist_insert(triggered, order);
+    }
+    skiplist_release_iterator(iter);
+    if (triggered->len == 0) {
+        skiplist_release(triggered);
+        return 0;
+    }
+    
+    // Convert triggered orders
+    int ret = 0;
+    mpd_t *triggered_price = mpd_new(&mpd_ctx);
+    mpd_copy(triggered_price, m->last_price, &mpd_ctx);
+    iter = skiplist_get_iterator(triggered);
+    json_t *result = json_object();
+    while ((node = skiplist_next(iter)) != NULL) {
+        order_t *order = node->value;
+        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
+            ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->taker_fee, order->source);
+        } else {
+            ret = market_put_limit_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->price, order->taker_fee, order->maker_fee, order->source);
+        }
+        order_finish(true, m, order);
+        if (ret < 0) {
+            break;
+        }
+    }
+    skiplist_release_iterator(iter);
+    skiplist_release(triggered);
+    json_decref(result);
+    if (ret < 0) {
+        mpd_del(triggered_price);
+        return ret;
+    }
+    
+    // Finish if price unchanged
+    if (mpd_cmp(m->last_price, triggered_price, &mpd_ctx) == 0) {
+        mpd_del(triggered_price);
+        return 0;
+    }
+    
+    // Trigger again if price changed
+    mpd_del(triggered_price);
+    return trigger_sell_stop_orders(m);
+}
+
+static int trigger_buy_stop_orders(market_t *m)
+{
+    // Find triggered orders
+    if (m->last_price->len == 0) {
+        return 0;
+    }
+    skiplist_type lt;
+    memset(&lt, 0, sizeof(lt));
+    lt.compare = order_match_compare;
+    skiplist_t *triggered = skiplist_create(&lt);
+    skiplist_node *node;
+    skiplist_iter *iter = skiplist_get_iterator(m->stop_bids);
+    while ((node = skiplist_next(iter)) != NULL) {
+        order_t *order = node->value;
+        if (mpd_cmp(order->trigger, m->last_price, &mpd_ctx) > 0) {
+            continue;
+        }
+        skiplist_insert(triggered, order);
+    }
+    skiplist_release_iterator(iter);
+    if (triggered->len == 0) {
+        skiplist_release(triggered);
+        return 0;
+    }
+    
+    // Convert triggered orders
+    int ret = 0;
+    mpd_t *triggered_price = mpd_new(&mpd_ctx);
+    mpd_copy(triggered_price, m->last_price, &mpd_ctx);
+    iter = skiplist_get_iterator(triggered);
+    json_t *result = json_object();
+    while ((node = skiplist_next(iter)) != NULL) {
+        order_t *order = node->value;
+        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
+            ret = market_put_market_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->taker_fee, order->source);
+        } else {
+            ret = market_put_limit_order(true, false, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->price, order->taker_fee, order->maker_fee, order->source);
+        }
+        order_finish(true, m, order);
+        if (ret < 0) {
+            break;
+        }
+    }
+    skiplist_release_iterator(iter);
+    skiplist_release(triggered);
+    json_decref(result);
+    if (ret < 0) {
+        mpd_del(triggered_price);
+        return ret;
+    }
+    
+    // Finish if price unchanged
+    if (mpd_cmp(m->last_price, triggered_price, &mpd_ctx) == 0) {
+        mpd_del(triggered_price);
+        return 0;
+    }
+    
+    // Trigger again if price unchanged
+    mpd_del(triggered_price);
+    return trigger_buy_stop_orders(m);
 }
 
 int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *trigger, mpd_t *amount, mpd_t *taker_fee, const char *source)
