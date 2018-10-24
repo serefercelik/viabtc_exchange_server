@@ -1340,19 +1340,17 @@ int market_put_limit_order(bool real, json_t **result, market_t *m, uint32_t use
     if (ret < 0) {
         return ret;
     }
-    
-    if (real) {
-        if (side == MARKET_ORDER_SIDE_ASK) {
-            ret = trigger_sell_stop_orders(real, m);
-        } else {
-            ret = trigger_buy_stop_orders(real, m);
-        }
-        if (ret < 0) {
-            log_error("trigger stop orders fail: %d", ret);
-            return -__LINE__;
-        }
+
+    if (side == MARKET_ORDER_SIDE_ASK) {
+        ret = trigger_sell_stop_orders(real, m);
+    } else {
+        ret = trigger_buy_stop_orders(real, m);
     }
-    
+    if (ret < 0) {
+        log_error("trigger stop orders fail: %d", ret);
+        return -__LINE__;
+    }
+
     return 0;
 }
 
@@ -1403,19 +1401,17 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
     if (ret < 0) {
         return ret;
     }
-    
-    if (real) {
-        if (side == MARKET_ORDER_SIDE_ASK) {
-            ret = trigger_sell_stop_orders(real, m);
-        } else {
-            ret = trigger_buy_stop_orders(real, m);
-        }
-        if (ret < 0) {
-            log_error("trigger stop orders fail: %d", ret);
-            return -__LINE__;
-        }
+
+    if (side == MARKET_ORDER_SIDE_ASK) {
+        ret = trigger_sell_stop_orders(real, m);
+    } else {
+        ret = trigger_buy_stop_orders(real, m);
     }
-    
+    if (ret < 0) {
+        log_error("trigger stop orders fail: %d", ret);
+        return -__LINE__;
+    }
+
     return 0;
 }
 
