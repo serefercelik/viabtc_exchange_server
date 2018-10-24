@@ -1016,7 +1016,7 @@ static int put_market_order(bool real, json_t **result, market_t *m, uint32_t us
     return 0;
 }
 
-static int trigger_sell_stop_orders(market_t *m)
+static int trigger_sell_stop_orders(bool real, market_t *m)
 {
     // Find triggered orders
     if (m->last_price->len == 0) {
@@ -1050,9 +1050,9 @@ static int trigger_sell_stop_orders(market_t *m)
     while ((node = skiplist_next(iter)) != NULL) {
         order_t *order = node->value;
         if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
-            ret = put_market_order(true, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->taker_fee, order->source);
+            ret = put_market_order(real, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->taker_fee, order->source);
         } else {
-            ret = put_limit_order(true, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->price, order->taker_fee, order->maker_fee, order->source);
+            ret = put_limit_order(real, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->price, order->taker_fee, order->maker_fee, order->source);
         }
         order_finish(true, m, order);
         if (ret < 0) {
@@ -1075,7 +1075,7 @@ static int trigger_sell_stop_orders(market_t *m)
     
     // Trigger again if price changed
     mpd_del(triggered_price);
-    return trigger_sell_stop_orders(m);
+    return trigger_sell_stop_orders(real, m);
 }
 
 static int trigger_buy_stop_orders(market_t *m)
@@ -1343,7 +1343,7 @@ int market_put_limit_order(bool real, json_t **result, market_t *m, uint32_t use
     
     if (real) {
         if (side == MARKET_ORDER_SIDE_ASK) {
-            ret = trigger_sell_stop_orders(m);
+            ret = trigger_sell_stop_orders(real, m);
         } else {
             ret = trigger_buy_stop_orders(m);
         }
@@ -1406,7 +1406,7 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
     
     if (real) {
         if (side == MARKET_ORDER_SIDE_ASK) {
-            ret = trigger_sell_stop_orders(m);
+            ret = trigger_sell_stop_orders(real, m);
         } else {
             ret = trigger_buy_stop_orders(m);
         }
