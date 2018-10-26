@@ -424,7 +424,7 @@ static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     } else if (ret == -2) {
         return reply_error(ses, pkg, 11, "amount too small");
     } else if (ret == -101) {
-        return reply_error(ses, pkg, 101, "buy stop order not implemented");
+        return reply_error(ses, pkg, 101, "stop price outside market price");
     } else if (ret < 0) {
         log_fatal("market_put_stop_loss_order fail: %d", ret);
         return reply_error_internal_error(ses, pkg);
@@ -442,6 +442,119 @@ invalid_argument:
         mpd_del(amount);
     if (taker_fee)
         mpd_del(taker_fee);
+    
+    return reply_error_invalid_argument(ses, pkg);
+}
+
+static int on_cmd_order_put_stop_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params)
+{
+    if (json_array_size(params) != 9)
+        return reply_error_invalid_argument(ses, pkg);
+    
+    // user_id
+    if (!json_is_integer(json_array_get(params, 0)))
+        return reply_error_invalid_argument(ses, pkg);
+    uint32_t user_id = json_integer_value(json_array_get(params, 0));
+    
+    // market
+    if (!json_is_string(json_array_get(params, 1)))
+        return reply_error_invalid_argument(ses, pkg);
+    const char *market_name = json_string_value(json_array_get(params, 1));
+    market_t *market = get_market(market_name);
+    if (market == NULL)
+        return reply_error_invalid_argument(ses, pkg);
+    
+    // side
+    if (!json_is_integer(json_array_get(params, 2)))
+        return reply_error_invalid_argument(ses, pkg);
+    uint32_t side = json_integer_value(json_array_get(params, 2));
+    if (side != MARKET_ORDER_SIDE_ASK && side != MARKET_ORDER_SIDE_BID)
+        return reply_error_invalid_argument(ses, pkg);
+    
+    mpd_t *trigger      = NULL;
+    mpd_t *amount       = NULL;
+    mpd_t *price        = NULL;
+    mpd_t *taker_fee    = NULL;
+    mpd_t *maker_fee    = NULL;
+    
+    // trigger
+    if (!json_is_string(json_array_get(params, 3)))
+        goto invalid_argument;
+    trigger = decimal(json_string_value(json_array_get(params, 3)), market->money_prec);
+    if (trigger == NULL || mpd_cmp(trigger, mpd_zero, &mpd_ctx) <= 0)
+        goto invalid_argument;
+    
+    // amount
+    if (!json_is_string(json_array_get(params, 4)))
+        goto invalid_argument;
+    amount = decimal(json_string_value(json_array_get(params, 4)), market->stock_prec);
+    if (amount == NULL || mpd_cmp(amount, mpd_zero, &mpd_ctx) <= 0)
+        goto invalid_argument;
+    
+    // price
+    if (!json_is_string(json_array_get(params, 5)))
+        goto invalid_argument;
+    price = decimal(json_string_value(json_array_get(params, 5)), market->money_prec);
+    if (price == NULL || mpd_cmp(price, mpd_zero, &mpd_ctx) <= 0)
+        goto invalid_argument;
+    
+    // taker fee
+    if (!json_is_string(json_array_get(params, 6)))
+        goto invalid_argument;
+    taker_fee = decimal(json_string_value(json_array_get(params, 6)), market->fee_prec);
+    if (taker_fee == NULL || mpd_cmp(taker_fee, mpd_zero, &mpd_ctx) < 0 || mpd_cmp(taker_fee, mpd_one, &mpd_ctx) >= 0)
+        goto invalid_argument;
+    
+    // maker fee
+    if (!json_is_string(json_array_get(params, 7)))
+        goto invalid_argument;
+    maker_fee = decimal(json_string_value(json_array_get(params, 7)), market->fee_prec);
+    if (maker_fee == NULL || mpd_cmp(maker_fee, mpd_zero, &mpd_ctx) < 0 || mpd_cmp(maker_fee, mpd_one, &mpd_ctx) >= 0)
+        goto invalid_argument;
+    
+    // source
+    if (!json_is_string(json_array_get(params, 8)))
+        goto invalid_argument;
+    const char *source = json_string_value(json_array_get(params, 8));
+    if (strlen(source) >= SOURCE_MAX_LEN)
+        goto invalid_argument;
+    
+    json_t *result = NULL;
+    int ret = market_put_stop_limit_order(true, &result, market, user_id, side, trigger, amount, price, taker_fee, maker_fee, source);
+    
+    mpd_del(trigger);
+    mpd_del(amount);
+    mpd_del(price);
+    mpd_del(taker_fee);
+    mpd_del(maker_fee);
+    
+    if (ret == -1) {
+        return reply_error(ses, pkg, 10, "balance not enough");
+    } else if (ret == -2) {
+        return reply_error(ses, pkg, 11, "amount too small");
+    } else if (ret == -101) {
+        return reply_error(ses, pkg, 101, "stop price outside market price");
+    } else if (ret < 0) {
+        log_fatal("market_put_stop_limit_order fail: %d", ret);
+        return reply_error_internal_error(ses, pkg);
+    }
+    
+    append_operlog("stop_limit_order", params);
+    ret = reply_result(ses, pkg, result);
+    json_decref(result);
+    return ret;
+
+invalid_argument:
+    if (trigger)
+        mpd_del(trigger);
+    if (amount)
+        mpd_del(amount);
+    if (price)
+        mpd_del(price);
+    if (taker_fee)
+        mpd_del(taker_fee);
+    if (maker_fee)
+        mpd_del(maker_fee);
     
     return reply_error_invalid_argument(ses, pkg);
 }
@@ -1152,6 +1265,19 @@ static void svr_on_recv_pkg(nw_ses *ses, rpc_pkg *pkg)
         ret = on_cmd_order_put_stop_loss(ses, pkg, params);
         if (ret < 0) {
             log_error("on_cmd_order_put_stop_loss %s fail: %d", params_str, ret);
+        }
+        break;
+    case CMD_ORDER_PUT_STOP_LIMIT:
+        if (is_operlog_block() || is_history_block() || is_message_block()) {
+            log_fatal("service unavailable, operlog: %d, history: %d, message: %d",
+                    is_operlog_block(), is_history_block(), is_message_block());
+            reply_error_service_unavailable(ses, pkg);
+            goto cleanup;
+        }
+        log_trace("from: %s cmd order put stop limit, sequence: %u, params: %s", nw_sock_human_addr(&ses->peer_addr), pkg->sequence, params_str);
+        ret = on_cmd_order_put_stop_limit(ses, pkg, params);
+        if (ret < 0) {
+            log_error("on_cmd_order_put_stop_limit %s fail: %d", params_str, ret);
         }
         break;
     case CMD_ORDER_PUT_LIMIT:
