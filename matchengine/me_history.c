@@ -186,13 +186,14 @@ static int append_user_order(order_t *order)
 
     if (sdslen(sql) == 0) {
         sql = sdscatprintf(sql, "INSERT INTO `order_history_%u` (`id`, `create_time`, `finish_time`, `user_id`, "
-                "`market`, `source`, `t`, `side`, `price`, `amount`, `taker_fee`, `maker_fee`, `deal_stock`, `deal_money`, `deal_fee`) VALUES ", key.hash);
+                "`market`, `source`, `t`, `side`, `trigger`, `price`, `amount`, `taker_fee`, `maker_fee`, `deal_stock`, `deal_money`, `deal_fee`) VALUES ", key.hash);
     } else {
         sql = sdscatprintf(sql, ", ");
     }
 
     sql = sdscatprintf(sql, "(%"PRIu64", %f, %f, %u, '%s', '%s', %u, %u, ", order->id,
         order->create_time, order->update_time, order->user_id, order->market, order->source, order->type, order->side);
+    sql = sql_append_mpd(sql, order->trigger, true);
     sql = sql_append_mpd(sql, order->price, true);
     sql = sql_append_mpd(sql, order->amount, true);
     sql = sql_append_mpd(sql, order->taker_fee, true);
@@ -218,13 +219,14 @@ static int append_order_detail(order_t *order)
 
     if (sdslen(sql) == 0) {
         sql = sdscatprintf(sql, "INSERT INTO `order_detail_%u` (`id`, `create_time`, `finish_time`, `user_id`, "
-                "`market`, `source`, `t`, `side`, `price`, `amount`, `taker_fee`, `maker_fee`, `deal_stock`, `deal_money`, `deal_fee`) VALUES ", key.hash);
+                "`market`, `source`, `t`, `side`, `trigger`, `price`, `amount`, `taker_fee`, `maker_fee`, `deal_stock`, `deal_money`, `deal_fee`) VALUES ", key.hash);
     } else {
         sql = sdscatprintf(sql, ", ");
     }
 
     sql = sdscatprintf(sql, "(%"PRIu64", %f, %f, %u, '%s', '%s', %u, %u, ", order->id,
         order->create_time, order->update_time, order->user_id, order->market, order->source, order->type, order->side);
+    sql = sql_append_mpd(sql, order->trigger, true);
     sql = sql_append_mpd(sql, order->price, true);
     sql = sql_append_mpd(sql, order->amount, true);
     sql = sql_append_mpd(sql, order->taker_fee, true);

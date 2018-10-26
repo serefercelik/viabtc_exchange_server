@@ -118,6 +118,7 @@ static int order_id_compare(const void *value1, const void *value2)
 
 static void order_free(order_t *order)
 {
+    mpd_del(order->trigger);
     mpd_del(order->price);
     mpd_del(order->amount);
     mpd_del(order->taker_fee);
@@ -132,6 +133,43 @@ static void order_free(order_t *order)
     free(order);
 }
 
+static order_t *order_copy(order_t *order)
+{
+    order_t *copy = malloc(sizeof(order_t));
+    
+    copy->trigger       = mpd_new(&mpd_ctx);
+    copy->price         = mpd_new(&mpd_ctx);
+    copy->amount        = mpd_new(&mpd_ctx);
+    copy->taker_fee     = mpd_new(&mpd_ctx);
+    copy->maker_fee     = mpd_new(&mpd_ctx);
+    copy->left          = mpd_new(&mpd_ctx);
+    copy->freeze        = mpd_new(&mpd_ctx);
+    copy->deal_stock    = mpd_new(&mpd_ctx);
+    copy->deal_money    = mpd_new(&mpd_ctx);
+    copy->deal_fee      = mpd_new(&mpd_ctx);
+    
+    copy->id            = order->id;
+    copy->type          = order->type;
+    copy->side          = order->side;
+    copy->create_time   = order->create_time;
+    copy->update_time   = order->update_time;
+    copy->market        = strdup(order->market);
+    copy->source        = strdup(order->source);
+    copy->user_id       = order->user_id;
+    mpd_copy(copy->trigger, order->trigger, &mpd_ctx);
+    mpd_copy(copy->price, order->price, &mpd_ctx);
+    mpd_copy(copy->amount, order->amount, &mpd_ctx);
+    mpd_copy(copy->taker_fee, order->taker_fee, &mpd_ctx);
+    mpd_copy(copy->maker_fee, order->maker_fee, &mpd_ctx);
+    mpd_copy(copy->left, order->left, &mpd_ctx);
+    mpd_copy(copy->freeze, order->freeze, &mpd_ctx);
+    mpd_copy(copy->deal_stock, order->deal_stock, &mpd_ctx);
+    mpd_copy(copy->deal_money, order->deal_money, &mpd_ctx);
+    mpd_copy(copy->deal_fee, order->deal_fee, &mpd_ctx);
+    
+    return copy;
+}
+
 json_t *get_order_info(order_t *order)
 {
     json_t *info = json_object();
@@ -144,6 +182,7 @@ json_t *get_order_info(order_t *order)
     json_object_set_new(info, "ctime", json_real(order->create_time));
     json_object_set_new(info, "mtime", json_real(order->update_time));
 
+    json_object_set_new_mpd(info, "trigger", order->trigger);
     json_object_set_new_mpd(info, "price", order->price);
     json_object_set_new_mpd(info, "amount", order->amount);
     json_object_set_new_mpd(info, "taker_fee", order->taker_fee);
@@ -158,7 +197,7 @@ json_t *get_order_info(order_t *order)
 
 static int order_put(market_t *m, order_t *order)
 {
-    if (order->type != MARKET_ORDER_TYPE_LIMIT)
+    if (order->type != MARKET_ORDER_TYPE_LIMIT && order->type != MARKET_ORDER_TYPE_STOP_LOSS)
         return -__LINE__;
 
     struct dict_order_key order_key = { .order_id = order->id };
@@ -185,12 +224,19 @@ static int order_put(market_t *m, order_t *order)
     }
 
     if (order->side == MARKET_ORDER_SIDE_ASK) {
-        if (skiplist_insert(m->asks, order) == NULL)
-            return -__LINE__;
+        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
+            if (skiplist_insert(m->stop_asks, order) == NULL)
+                return -__LINE__;
+        } else {
+            if (skiplist_insert(m->asks, order) == NULL)
+                return -__LINE__;
+        }
         mpd_copy(order->freeze, order->left, &mpd_ctx);
         if (balance_freeze(order->user_id, m->stock, order->left) == NULL)
             return -__LINE__;
     } else {
+        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS)
+            return -__LINE__;
         if (skiplist_insert(m->bids, order) == NULL)
             return -__LINE__;
         mpd_t *result = mpd_new(&mpd_ctx);
@@ -209,13 +255,25 @@ static int order_put(market_t *m, order_t *order)
 static int order_finish(bool real, market_t *m, order_t *order)
 {
     if (order->side == MARKET_ORDER_SIDE_ASK) {
-        skiplist_node *node = skiplist_find(m->asks, order);
-        if (node) {
-            skiplist_delete(m->asks, node);
-        }
-        if (mpd_cmp(order->freeze, mpd_zero, &mpd_ctx) > 0) {
-            if (balance_unfreeze(order->user_id, m->stock, order->freeze) == NULL) {
-                return -__LINE__;
+        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
+            skiplist_node *node = skiplist_find(m->stop_asks, order);
+            if (node) {
+                skiplist_delete(m->stop_asks, node);
+            }
+            if (mpd_cmp(order->freeze, mpd_zero, &mpd_ctx) > 0) {
+                if (balance_unfreeze(order->user_id, m->stock, order->freeze) == NULL) {
+                    return -__LINE__;
+                }
+            }
+        } else {
+            skiplist_node *node = skiplist_find(m->asks, order);
+            if (node) {
+                skiplist_delete(m->asks, node);
+            }
+            if (mpd_cmp(order->freeze, mpd_zero, &mpd_ctx) > 0) {
+                if (balance_unfreeze(order->user_id, m->stock, order->freeze) == NULL) {
+                    return -__LINE__;
+                }
             }
         }
     } else {
@@ -305,7 +363,8 @@ market_t *market_create(struct market *conf)
 
     m->asks = skiplist_create(&lt);
     m->bids = skiplist_create(&lt);
-    if (m->asks == NULL || m->bids == NULL)
+    m->stop_asks = skiplist_create(&lt);
+    if (m->asks == NULL || m->bids == NULL || m->stop_asks == NULL)
         return NULL;
 
     return m;
@@ -361,6 +420,52 @@ static int append_balance_trade_fee(order_t *order, const char *asset, mpd_t *ch
     return ret;
 }
 
+static int trigger_sell_stop_orders(market_t *m, mpd_t *price)
+{
+    skiplist_type lt;
+    memset(&lt, 0, sizeof(lt));
+    lt.compare = order_match_compare;
+    skiplist_t *triggered = skiplist_create(&lt);
+    skiplist_node *node;
+    skiplist_iter *iter = skiplist_get_iterator(m->stop_asks);
+    int ret = 0;
+    while ((node = skiplist_next(iter)) != NULL) {
+        order_t *order = node->value;
+        if (mpd_cmp(order->trigger, price, &mpd_ctx) < 0) {
+            continue;
+        }
+        order_t *copy = order_copy(order);
+        skiplist_insert(triggered, copy);
+        ret = order_finish(true, m, order);
+        if (ret < 0) {
+            break;
+        }
+    }
+    skiplist_release_iterator(iter);
+    if (ret < 0) {
+        skiplist_release(triggered);
+        return ret;
+    }
+    iter = skiplist_get_iterator(triggered);
+    json_t *result = json_object();
+    while ((node = skiplist_next(iter)) != NULL) {
+        order_t *order = node->value;
+        ret = market_put_market_order(true, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->taker_fee, order->source);
+        if (ret < 0) {
+            break;
+        }
+    }
+    skiplist_release_iterator(iter);
+    skiplist_release(triggered);
+    json_decref(result);
+    return ret;
+}
+
+static int trigger_stop_loss_orders(market_t *m, mpd_t *price)
+{
+    return trigger_sell_stop_orders(m, price);
+}
+
 static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
 {
     mpd_t *price    = mpd_new(&mpd_ctx);
@@ -372,6 +477,7 @@ static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
 
     skiplist_node *node;
     skiplist_iter *iter = skiplist_get_iterator(m->bids);
+    bool dealt = false;
     while ((node = skiplist_next(iter)) != NULL) {
         if (mpd_cmp(taker->left, mpd_zero, &mpd_ctx) == 0) {
             break;
@@ -382,6 +488,7 @@ static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
             break;
         }
 
+        dealt = true;
         mpd_copy(price, maker->price, &mpd_ctx);
         if (mpd_cmp(taker->left, maker->left, &mpd_ctx) < 0) {
             mpd_copy(amount, taker->left, &mpd_ctx);
@@ -453,6 +560,11 @@ static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
         }
     }
     skiplist_release_iterator(iter);
+    
+    int ret = 0;
+    if (real && dealt) {
+        ret = trigger_stop_loss_orders(m, price);
+    }
 
     mpd_del(amount);
     mpd_del(price);
@@ -461,7 +573,7 @@ static int execute_limit_ask_order(bool real, market_t *m, order_t *taker)
     mpd_del(bid_fee);
     mpd_del(result);
 
-    return 0;
+    return ret;
 }
 
 static int execute_limit_bid_order(bool real, market_t *m, order_t *taker)
@@ -475,6 +587,7 @@ static int execute_limit_bid_order(bool real, market_t *m, order_t *taker)
 
     skiplist_node *node;
     skiplist_iter *iter = skiplist_get_iterator(m->asks);
+    bool dealt = false;
     while ((node = skiplist_next(iter)) != NULL) {
         if (mpd_cmp(taker->left, mpd_zero, &mpd_ctx) == 0) {
             break;
@@ -485,6 +598,7 @@ static int execute_limit_bid_order(bool real, market_t *m, order_t *taker)
             break;
         }
 
+        dealt = true;
         mpd_copy(price, maker->price, &mpd_ctx);
         if (mpd_cmp(taker->left, maker->left, &mpd_ctx) < 0) {
             mpd_copy(amount, taker->left, &mpd_ctx);
@@ -556,6 +670,11 @@ static int execute_limit_bid_order(bool real, market_t *m, order_t *taker)
         }
     }
     skiplist_release_iterator(iter);
+    
+    int ret = 0;
+    if (real && dealt) {
+        ret = trigger_stop_loss_orders(m, price);
+    }
 
     mpd_del(amount);
     mpd_del(price);
@@ -564,6 +683,68 @@ static int execute_limit_bid_order(bool real, market_t *m, order_t *taker)
     mpd_del(bid_fee);
     mpd_del(result);
 
+    return ret;
+}
+
+int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *trigger, mpd_t *amount, mpd_t *taker_fee, const char *source)
+{
+    if (side == MARKET_ORDER_SIDE_ASK) {
+        mpd_t *balance = balance_get(user_id, BALANCE_TYPE_AVAILABLE, m->stock);
+        if (!balance || mpd_cmp(balance, amount, &mpd_ctx) < 0) {
+            return -1;
+        }
+    } else {
+        return -101;
+    }
+    
+    if (mpd_cmp(amount, m->min_amount, &mpd_ctx) < 0) {
+        return -2;
+    }
+    
+    order_t *order = malloc(sizeof(order_t));
+    if (order == NULL) {
+        return -__LINE__;
+    }
+    
+    order->id           = ++order_id_start;
+    order->type         = MARKET_ORDER_TYPE_STOP_LOSS;
+    order->side         = side;
+    order->create_time  = current_timestamp();
+    order->update_time  = order->create_time;
+    order->market       = strdup(m->name);
+    order->source       = strdup(source);
+    order->user_id      = user_id;
+    order->trigger      = mpd_new(&mpd_ctx);
+    order->price        = mpd_new(&mpd_ctx);
+    order->amount       = mpd_new(&mpd_ctx);
+    order->taker_fee    = mpd_new(&mpd_ctx);
+    order->maker_fee    = mpd_new(&mpd_ctx);
+    order->left         = mpd_new(&mpd_ctx);
+    order->freeze       = mpd_new(&mpd_ctx);
+    order->deal_stock   = mpd_new(&mpd_ctx);
+    order->deal_money   = mpd_new(&mpd_ctx);
+    order->deal_fee     = mpd_new(&mpd_ctx);
+    
+    mpd_copy(order->trigger, trigger, &mpd_ctx);
+    mpd_copy(order->price, mpd_zero, &mpd_ctx);
+    mpd_copy(order->amount, amount, &mpd_ctx);
+    mpd_copy(order->taker_fee, taker_fee, &mpd_ctx);
+    mpd_copy(order->maker_fee, mpd_zero, &mpd_ctx);
+    mpd_copy(order->left, amount, &mpd_ctx);
+    mpd_copy(order->freeze, mpd_zero, &mpd_ctx);
+    mpd_copy(order->deal_stock, mpd_zero, &mpd_ctx);
+    mpd_copy(order->deal_money, mpd_zero, &mpd_ctx);
+    mpd_copy(order->deal_fee, mpd_zero, &mpd_ctx);
+    
+    if (real) {
+        push_order_message(ORDER_EVENT_PUT, order, m);
+        *result = get_order_info(order);
+    }
+    int ret = order_put(m, order);
+    if (ret < 0) {
+        log_fatal("order_put fail: %d, order: %"PRIu64"", ret, order->id);
+    }
+    
     return 0;
 }
 
@@ -602,6 +783,7 @@ int market_put_limit_order(bool real, json_t **result, market_t *m, uint32_t use
     order->market       = strdup(m->name);
     order->source       = strdup(source);
     order->user_id      = user_id;
+    order->trigger      = mpd_new(&mpd_ctx);
     order->price        = mpd_new(&mpd_ctx);
     order->amount       = mpd_new(&mpd_ctx);
     order->taker_fee    = mpd_new(&mpd_ctx);
@@ -612,6 +794,7 @@ int market_put_limit_order(bool real, json_t **result, market_t *m, uint32_t use
     order->deal_money   = mpd_new(&mpd_ctx);
     order->deal_fee     = mpd_new(&mpd_ctx);
 
+    mpd_copy(order->trigger, mpd_zero, &mpd_ctx);
     mpd_copy(order->price, price, &mpd_ctx);
     mpd_copy(order->amount, amount, &mpd_ctx);
     mpd_copy(order->taker_fee, taker_fee, &mpd_ctx);
@@ -669,11 +852,13 @@ static int execute_market_ask_order(bool real, market_t *m, order_t *taker)
 
     skiplist_node *node;
     skiplist_iter *iter = skiplist_get_iterator(m->bids);
+    bool dealt = false;
     while ((node = skiplist_next(iter)) != NULL) {
         if (mpd_cmp(taker->left, mpd_zero, &mpd_ctx) == 0) {
             break;
         }
 
+        dealt = true;
         order_t *maker = node->value;
         mpd_copy(price, maker->price, &mpd_ctx);
         if (mpd_cmp(taker->left, maker->left, &mpd_ctx) < 0) {
@@ -746,6 +931,11 @@ static int execute_market_ask_order(bool real, market_t *m, order_t *taker)
         }
     }
     skiplist_release_iterator(iter);
+    
+    int ret = 0;
+    if (real && dealt) {
+        ret = trigger_stop_loss_orders(m, price);
+    }
 
     mpd_del(amount);
     mpd_del(price);
@@ -754,7 +944,7 @@ static int execute_market_ask_order(bool real, market_t *m, order_t *taker)
     mpd_del(bid_fee);
     mpd_del(result);
 
-    return 0;
+    return ret;
 }
 
 static int execute_market_bid_order(bool real, market_t *m, order_t *taker)
@@ -768,11 +958,13 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker)
 
     skiplist_node *node;
     skiplist_iter *iter = skiplist_get_iterator(m->asks);
+    bool dealt = false;
     while ((node = skiplist_next(iter)) != NULL) {
         if (mpd_cmp(taker->left, mpd_zero, &mpd_ctx) == 0) {
             break;
         }
 
+        dealt = true;
         order_t *maker = node->value;
         mpd_copy(price, maker->price, &mpd_ctx);
 
@@ -860,6 +1052,11 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker)
         }
     }
     skiplist_release_iterator(iter);
+    
+    int ret = 0;
+    if (real && dealt) {
+        ret = trigger_stop_loss_orders(m, price);
+    }
 
     mpd_del(amount);
     mpd_del(price);
@@ -868,7 +1065,7 @@ static int execute_market_bid_order(bool real, market_t *m, order_t *taker)
     mpd_del(bid_fee);
     mpd_del(result);
 
-    return 0;
+    return ret;
 }
 
 int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *amount, mpd_t *taker_fee, const char *source)
@@ -927,6 +1124,7 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
     order->market       = strdup(m->name);
     order->source       = strdup(source);
     order->user_id      = user_id;
+    order->trigger      = mpd_new(&mpd_ctx);
     order->price        = mpd_new(&mpd_ctx);
     order->amount       = mpd_new(&mpd_ctx);
     order->taker_fee    = mpd_new(&mpd_ctx);
@@ -937,6 +1135,7 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
     order->deal_money   = mpd_new(&mpd_ctx);
     order->deal_fee     = mpd_new(&mpd_ctx);
 
+    mpd_copy(order->trigger, mpd_zero, &mpd_ctx);
     mpd_copy(order->price, mpd_zero, &mpd_ctx);
     mpd_copy(order->amount, amount, &mpd_ctx);
     mpd_copy(order->taker_fee, taker_fee, &mpd_ctx);
@@ -947,6 +1146,7 @@ int market_put_market_order(bool real, json_t **result, market_t *m, uint32_t us
     mpd_copy(order->deal_money, mpd_zero, &mpd_ctx);
     mpd_copy(order->deal_fee, mpd_zero, &mpd_ctx);
 
+    dlog_flush_all();
     int ret;
     if (side == MARKET_ORDER_SIDE_ASK) {
         ret = execute_market_ask_order(real, m, order);

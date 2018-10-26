@@ -265,6 +265,7 @@ static int init_methods_handler(void)
     ERR_RET_LN(add_handler("balance.update", matchengine, CMD_BALANCE_UPDATE));
     ERR_RET_LN(add_handler("balance.history", readhistory, CMD_BALANCE_HISTORY));
 
+    ERR_RET_LN(add_handler("order.put_stop_loss", matchengine, CMD_ORDER_PUT_STOP_LOSS));
     ERR_RET_LN(add_handler("order.put_limit", matchengine, CMD_ORDER_PUT_LIMIT));
     ERR_RET_LN(add_handler("order.put_market", matchengine, CMD_ORDER_PUT_MARKET));
     ERR_RET_LN(add_handler("order.cancel", matchengine, CMD_ORDER_CANCEL));
