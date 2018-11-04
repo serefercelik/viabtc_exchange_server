@@ -184,7 +184,7 @@ static int order_put(market_t *m, order_t *order)
 {
     switch (order->type) {
         case MARKET_ORDER_TYPE_LIMIT:
-        case MARKET_ORDER_TYPE_STOP_LOSS:
+        case MARKET_ORDER_TYPE_STOP_MARKET:
         case MARKET_ORDER_TYPE_STOP_LIMIT:
             break;
         default:
@@ -220,7 +220,7 @@ static int order_put(market_t *m, order_t *order)
                 if (skiplist_insert(m->asks, order) == NULL)
                     return -__LINE__;
                 break;
-            case MARKET_ORDER_TYPE_STOP_LOSS:
+            case MARKET_ORDER_TYPE_STOP_MARKET:
             case MARKET_ORDER_TYPE_STOP_LIMIT:
                 if (skiplist_insert(m->stop_asks, order) == NULL)
                     return -__LINE__;
@@ -237,7 +237,7 @@ static int order_put(market_t *m, order_t *order)
                 if (skiplist_insert(m->bids, order) == NULL)
                     return -__LINE__;
                 break;
-            case MARKET_ORDER_TYPE_STOP_LOSS:
+            case MARKET_ORDER_TYPE_STOP_MARKET:
             case MARKET_ORDER_TYPE_STOP_LIMIT:
                 if (skiplist_insert(m->stop_bids, order) == NULL)
                     return -__LINE__;
@@ -261,7 +261,7 @@ static int order_put(market_t *m, order_t *order)
 static int order_finish(bool real, market_t *m, order_t *order)
 {
     if (order->side == MARKET_ORDER_SIDE_ASK) {
-        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS || order->type == MARKET_ORDER_TYPE_STOP_LIMIT) {
+        if (order->type == MARKET_ORDER_TYPE_STOP_MARKET || order->type == MARKET_ORDER_TYPE_STOP_LIMIT) {
             skiplist_node *node = skiplist_find(m->stop_asks, order);
             if (node) {
                 skiplist_delete(m->stop_asks, node);
@@ -283,7 +283,7 @@ static int order_finish(bool real, market_t *m, order_t *order)
             }
         }
     } else {
-        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS || order->type == MARKET_ORDER_TYPE_STOP_LIMIT) {
+        if (order->type == MARKET_ORDER_TYPE_STOP_MARKET || order->type == MARKET_ORDER_TYPE_STOP_LIMIT) {
             skiplist_node *node = skiplist_find(m->stop_bids, order);
             if (node) {
                 skiplist_delete(m->stop_bids, node);
@@ -1027,7 +1027,7 @@ static int trigger_sell_stop_orders(bool real, market_t *m)
         if (mpd_cmp(m->last_price, order->trigger, &mpd_ctx) >= 0) {
             break;
         }
-        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
+        if (order->type == MARKET_ORDER_TYPE_STOP_MARKET) {
             ret = put_market_order(real, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->taker_fee, order->source);
         } else {
             ret = put_limit_order(real, &result, m, order->user_id, MARKET_ORDER_SIDE_ASK, order->amount, order->price, order->taker_fee, order->maker_fee, order->source);
@@ -1054,7 +1054,7 @@ static int trigger_buy_stop_orders(bool real, market_t *m)
         if (mpd_cmp(m->last_price, order->trigger, &mpd_ctx) <= 0) {
             break;
         }
-        if (order->type == MARKET_ORDER_TYPE_STOP_LOSS) {
+        if (order->type == MARKET_ORDER_TYPE_STOP_MARKET) {
             ret = put_market_order(real, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->taker_fee, order->source);
         } else {
             ret = put_limit_order(real, &result, m, order->user_id, MARKET_ORDER_SIDE_BID, order->amount, order->price, order->taker_fee, order->maker_fee, order->source);
@@ -1070,7 +1070,7 @@ static int trigger_buy_stop_orders(bool real, market_t *m)
     return ret;
 }
 
-int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *trigger, mpd_t *amount, mpd_t *taker_fee, const char *source)
+int market_put_stop_market_order(bool real, json_t **result, market_t *m, uint32_t user_id, uint32_t side, mpd_t *trigger, mpd_t *amount, mpd_t *taker_fee, const char *source)
 {
     if (side == MARKET_ORDER_SIDE_ASK) {
         if (m->last_price->len == 0 || mpd_cmp(trigger, m->last_price, &mpd_ctx) >= 0) {
@@ -1116,7 +1116,7 @@ int market_put_stop_loss_order(bool real, json_t **result, market_t *m, uint32_t
     }
 
     order->id           = ++order_id_start;
-    order->type         = MARKET_ORDER_TYPE_STOP_LOSS;
+    order->type         = MARKET_ORDER_TYPE_STOP_MARKET;
     order->side         = side;
     order->create_time  = current_timestamp();
     order->update_time  = order->create_time;

@@ -355,7 +355,7 @@ invalid_argument:
     return reply_error_invalid_argument(ses, pkg);
 }
 
-static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
+static int on_cmd_order_put_stop_market(nw_ses *ses, rpc_pkg *pkg, json_t *params)
 {
     if (json_array_size(params) != 7)
         return reply_error_invalid_argument(ses, pkg);
@@ -413,7 +413,7 @@ static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
         goto invalid_argument;
     
     json_t *result = NULL;
-    int ret = market_put_stop_loss_order(true, &result, market, user_id, side, trigger, amount, taker_fee, source);
+    int ret = market_put_stop_market_order(true, &result, market, user_id, side, trigger, amount, taker_fee, source);
     
     mpd_del(trigger);
     mpd_del(amount);
@@ -426,11 +426,11 @@ static int on_cmd_order_put_stop_loss(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     } else if (ret == -101) {
         return reply_error(ses, pkg, 101, "stop price outside market price");
     } else if (ret < 0) {
-        log_fatal("market_put_stop_loss_order fail: %d", ret);
+        log_fatal("market_put_stop_market_order fail: %d", ret);
         return reply_error_internal_error(ses, pkg);
     }
     
-    append_operlog("stop_loss_order", params);
+    append_operlog("stop_market_order", params);
     ret = reply_result(ses, pkg, result);
     json_decref(result);
     return ret;
@@ -1254,17 +1254,17 @@ static void svr_on_recv_pkg(nw_ses *ses, rpc_pkg *pkg)
             log_error("on_cmd_asset_summary %s fail: %d", params_str, ret);
         }
         break;
-    case CMD_ORDER_PUT_STOP_LOSS:
+    case CMD_ORDER_PUT_STOP_MARKET:
         if (is_operlog_block() || is_history_block() || is_message_block()) {
             log_fatal("service unavailable, operlog: %d, history: %d, message: %d",
                     is_operlog_block(), is_history_block(), is_message_block());
             reply_error_service_unavailable(ses, pkg);
             goto cleanup;
         }
-        log_trace("from: %s cmd order put stop loss, sequence: %u params: %s", nw_sock_human_addr(&ses->peer_addr), pkg->sequence, params_str);
-        ret = on_cmd_order_put_stop_loss(ses, pkg, params);
+        log_trace("from: %s cmd order put stop market, sequence: %u params: %s", nw_sock_human_addr(&ses->peer_addr), pkg->sequence, params_str);
+        ret = on_cmd_order_put_stop_market(ses, pkg, params);
         if (ret < 0) {
-            log_error("on_cmd_order_put_stop_loss %s fail: %d", params_str, ret);
+            log_error("on_cmd_order_put_stop_market %s fail: %d", params_str, ret);
         }
         break;
     case CMD_ORDER_PUT_STOP_LIMIT:
