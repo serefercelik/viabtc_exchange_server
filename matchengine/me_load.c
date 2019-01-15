@@ -166,7 +166,7 @@ static int load_update_balance(json_t *params)
     return 0;
 }
 
-static int load_stop_loss_order(json_t *params)
+static int load_stop_market_order(json_t *params)
 {
     if (json_array_size(params) != 7)
         return -__LINE__;
@@ -229,7 +229,7 @@ static int load_stop_loss_order(json_t *params)
     if (strlen(source) > SOURCE_MAX_LEN)
         goto error;
     
-    int ret = market_put_stop_loss_order(false, NULL, market, user_id, side, trigger, amount, taker_fee, source);
+    int ret = market_put_stop_market_order(false, NULL, market, user_id, side, trigger, amount, taker_fee, source);
     
     mpd_del(trigger);
     mpd_del(amount);
@@ -567,8 +567,8 @@ static int load_oper(json_t *detail)
     int ret = 0;
     if (strcmp(method, "update_balance") == 0) {
         ret = load_update_balance(params);
-    } else if (strcmp(method, "stop_loss_order") == 0) {
-        ret = load_stop_loss_order(params);
+    } else if (strcmp(method, "stop_market_order") == 0) {
+        ret = load_stop_market_order(params);
     } else if (strcmp(method, "stop_limit_order") == 0) {
         ret = load_stop_limit_order(params);
     } else if (strcmp(method, "limit_order") == 0) {

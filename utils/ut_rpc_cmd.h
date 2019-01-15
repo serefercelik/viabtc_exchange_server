@@ -24,7 +24,7 @@
 # define CMD_ORDER_HISTORY          208
 # define CMD_ORDER_DEALS            209
 # define CMD_ORDER_DETAIL_FINISHED  210
-# define CMD_ORDER_PUT_STOP_LOSS    211
+# define CMD_ORDER_PUT_STOP_MARKET    211
 # define CMD_ORDER_PUT_STOP_LIMIT   212
 
 // market
