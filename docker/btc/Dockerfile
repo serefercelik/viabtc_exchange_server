@@ -6,13 +6,10 @@ RUN sed -i "s/archive.ubuntu./mirrors.aliyun./g" /etc/apt/sources.list
 
 RUN apt-get update &&\
     apt-get install -y wget vim psmisc &&\
-	# 依赖包
+
 	apt-get -y install libev-dev libssl-dev libmpdec-dev libjansson-dev libmysqlclient-dev &&\
- 	# 安装构建工具
 	apt-get install -y  build-essential autoconf libtool python &&\
-	# 清理
 	#rm -rf /var/lib/apt/lists/* &&\
-	# 建立工作目录
 	mkdir /src/ &&\
 	cd /src
 
@@ -96,5 +93,8 @@ EXPOSE 8081
 
 # monitor
 EXPOSE 8091
+
+#accessws
+EXPOSE 8090
 
 CMD ["/btc/start.sh"]
