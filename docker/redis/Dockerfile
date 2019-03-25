@@ -1,13 +1,15 @@
-FROM alpine:3.7
+FROM redis:4.0.6-alpine
+MAINTAINER Seref Ercelik
 
-RUN addgroup -S redis && adduser -S -G redis redis
-RUN apk add --no-cache redis
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 
-COPY redis.conf /etc/redis/redis.conf
-COPY entrypoint.sh /docker-entrypoint.sh
+RUN apk add --no-cache \
+        curl \
+        bash
 
-ENV PORT=6379
-ENV SLAVEOF=
+ADD docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
+
+EXPOSE 26379
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["redis-server", "/etc/redis/redis.conf"]
