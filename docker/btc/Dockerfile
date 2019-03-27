@@ -97,4 +97,8 @@ EXPOSE 8091
 #accessws
 EXPOSE 8090
 
+EXPOSE 8013
+
+
+
 CMD ["/btc/start.sh"]
