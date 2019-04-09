@@ -478,14 +478,17 @@ static int on_cmd_order_put_stop_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params
     mpd_t *price        = NULL;
     mpd_t *taker_fee    = NULL;
     mpd_t *maker_fee    = NULL;
-    
+
     // trigger
     if (!json_is_string(json_array_get(params, 3)))
         goto invalid_argument;
     trigger = decimal(json_string_value(json_array_get(params, 3)), market->money_prec);
     if (trigger == NULL || mpd_cmp(trigger, mpd_zero, &mpd_ctx) <= 0)
         goto invalid_argument;
-    
+
+    char *str_trigger = mpd_to_sci(order->trigger, 0);
+    log_fatal("SEREF: DEBUG TRIGGER : %s",str_trigger);
+
     // amount
     if (!json_is_string(json_array_get(params, 4)))
         goto invalid_argument;

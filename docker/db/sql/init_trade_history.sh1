@@ -6,7 +6,6 @@ MYSQL_PASS="root"
 MYSQL_DB="trade_history"
 
 
-
 for i in `seq 0 99`
 do
     echo "create table balance_history_$i"

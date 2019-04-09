@@ -11,10 +11,11 @@ services:
       - "17424:7424"
       - "14444:4444"
       - "18080:8080"
-      - "18180:8013"
       - "18081:8081"
       - "18090:8090"
       - "18091:8091"
+      - "18180:8180"
+
     depends_on:
       - zookeeper
       - mysql
@@ -80,6 +81,7 @@ services:
       KAFKA_ADVERTISED_HOST_NAME: kafka
       KAFKA_ADVERTISED_PORT: 9092
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
